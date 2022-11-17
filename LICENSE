@@ -1,7 +1,8 @@
- All code in this repo, https://github.com/greenmtnit/windows-scripts,
+All code in this repo, https://github.com/greenmtnit/windows-scripts,
 is copyright © Green Mountain IT Solutions, LLC, and is licensed
 under the terms of LICENSE, the GNU General Public License Version 3,
-EXCEPT file backup_config, adapted from https://www.powershellgallery.com/packages/PSWindowsUpdate/2.2.0.3/,
+EXCEPT files Install-WindowsUpdatesAndReboot.ps1 and Install-WindowsUpdatesNoReboot.ps1,
+taken from https://www.powershellgallery.com/packages/PSWindowsUpdate/2.2.0.3/,
 copyright © Michal Gajda and licensed under the terms of MIT_LICENSE. 
 
                      GNU GENERAL PUBLIC LICENSE
