@@ -1,0 +1,106 @@
+
+# EASY STUFF. Start with the easy checks. If if fails these, that's all you need to know.
+
+## Easy check 1: Get-PhysicalDisk Health. This is Jonah's existing script
+$disks = Get-PhysicalDisk
+
+foreach ($disk in $disks) {
+    if (!($disk.HealthStatus -eq "Healthy")) {
+         RMM-Alert "Problem! Disk not healthy!"
+		 exit 1 # Can exit the script here. If there's a problem, that's all you need to know.
+    }
+}
+
+## TOADD - Easy check 2: can be added into the block above - Get-StorageReliabilityCounter
+foreach ($disk in $disks) {
+	$readErrors = Get-StorageReliabilityCounter $disk
+    if ($readErrors -gt "0") {
+         RMM-Alert "Problem - read errors!"
+ 		 exit 1 # Can exit the script here. If there's a problem, that's all you need to know.	 
+    }
+}
+
+# COMPLEX checks. If the easy checks fail, move on to these.
+
+
+
+## Check if SMART is installed
+$smartctlPath1 = C:\Programdata\Chocolatey\Bin\smartctl.exe #or whatever, not the actual path
+$smartctlPath2 = C:\ProgramFiles\Smartmoonthools\Bin\smartctl.exe #or whatever
+
+if (! Test-Path $smartctlPath1 and ! Test-Path $smartctlPath2) {
+	#We need to install smartctl, it wasn't found
+	Write-Host "smartctl not found, installing it"
+	# Here we incorporate the chocolatey script from here: https://greenmtnit.syncromsp.com/scripts/611809/edit
+
+	$syncroPath = "$env:ProgramFiles\RepairTech\Syncro\kabuto_app_manager\choco.exe"
+	$chocoPath = "$env:ProgramData\chocolatey\choco.exe"
+	$packageName = "smartmontools"
+
+	try {
+		# Check for Chocolatey in Syncro path
+		if (Test-Path -Path $syncroPath) {
+			Write-Host "Found Chocolatey from Syncro, using it."
+			$choco = $syncroPath
+		}
+		# Check for Chocolatey in its default location
+		elseif (Test-Path -Path $chocoPath) {
+			Write-Host "Found Chocolatey in its default location, using it."
+			$choco = $chocoPath
+		}
+		else {
+			Write-Host "Chocolatey not found, installing it..."
+			
+			# Install Chocolatey
+			Set-ExecutionPolicy Bypass -Scope Process -Force
+			[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+			iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+
+			$choco = $chocoPath
+		}
+
+		Write-Host "Installing $packageName"
+		
+		# Use the "upgrade" command, which will either  install or upgrade the package
+		& "$choco" upgrade $packageName -y
+	}
+	catch {
+		Write-Host "Error: $_"
+	}
+}
+
+## Check if disk supports SMART.
+if (! $smartSupport) {
+	Write-Host "SMART not supported, can't do any more checks." #Give up and exit
+	exit 0 
+}
+
+
+else { $smartData = smartctl -a /dev/sda #this is obviously not real and needs work to loop through the disks, parse JSON etc
+
+## Determine disk type. Need to find out how! 
+$diskType = Get-DiskType # ??? not a read cmdlet
+
+## Generic checks applicable to all disk types
+    if 	any logged smarttest = failed
+
+    if smartstatus != healthy
+
+
+### Checks for individual disk types
+
+if ($diskType = "HDD") {
+    if $smartdata.BadBlocks -gt 0
+	    RMM-Alert "Disk has bad block"
+}
+	
+if ($diskType = "SATA SSD") {
+    if $smartdata.LifetimeRemaining -lt 10
+	    RMM-Alert "Disk is very old"
+} 
+
+if ($diskType = "NVMe SSD") {
+	# NVMe SSDs in general don't seem to support tests or much SMART data. We need to compare lifetime to see if the disk is so old it's likely to fail
+    if $PowerOnTime -gt 35063 #about 4 years constant runtime.
+	if $PowerCycles -gt 4000 #4000 times of turning drive on and off
+} 
