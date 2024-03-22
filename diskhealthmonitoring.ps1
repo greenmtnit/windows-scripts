@@ -83,7 +83,7 @@ function Invoke-Smartmontools {
 	}
 	# Checking Temp Status
 	$TempFailed = $HDDInfo | Where-Object { 
-		$_.temperature.current -ge $Temperature 
+		$_.temperature.current -ge $Temperature
 	}
 	if ($TempFailed) { 
 		$DiskHealth.add('TempErrors',"Temperature failed for disks: $($TempFailed.serial_number)") 
