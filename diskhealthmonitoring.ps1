@@ -1,4 +1,6 @@
 # Functions
+
+
 <#
 	.SYNOPSIS
 		Install-Smartmontools checks if smartctl.exe is present at C:\Program Files\smartmontools\bin\smartctl.exe
@@ -48,6 +50,8 @@ function Install-Smartmontools {
 		}
 	}
 }
+
+
 <#
 	.SYNOPSIS
 		Invoke-Smartmontools checks every compatible disk on the computer and runs checks 
@@ -69,21 +73,38 @@ function Invoke-Smartmontools {
 	$HDDInfo = foreach ($HDD in $HDDs) {
 		(& "C:\Program Files\smartmontools\bin\smartctl.exe" -t short -a -j $HDD.name) | convertfrom-json
 	}
-	$DiskHealth = @{}
+	$DiskHealth = "True"
 	# Checking SMART status
 	$SmartFailed = $HDDInfo | Where-Object { $_.Smart_Status.Passed -ne $true }
-	if ($SmartFailed) { $DiskHealth.add('SmartErrors',"Smart Failed for disks: $($SmartFailed.serial_number)") }
+	if ($SmartFailed) {
+		$DiskHealth.add('SmartErrors',"Smart Failed for disks: $($SmartFailed.serial_number)") 
+		Write-Host 'SmartErrors',"Smart Failed for disks: $($SmartFailed.serial_number)"
+		$DiskHealth = "False"
+	}
 	# Checking Temp Status
-	$TempFailed = $HDDInfo | Where-Object { $_.temperature.current -ge $Temperature }
-	if ($TempFailed) { $DiskHealth.add('TempErrors',"Temperature failed for disks: $($TempFailed.serial_number)") }
+	$TempFailed = $HDDInfo | Where-Object { 
+		$_.temperature.current -ge $Temperature 
+	}
+	if ($TempFailed) { 
+		$DiskHealth.add('TempErrors',"Temperature failed for disks: $($TempFailed.serial_number)") 
+		Write-Host 'TempErrors',"Temperature failed for disks: $($TempFailed.serial_number)"
+		$DiskHealth = "False"
+
+	}
 	# Checking Power Cycle Count status
 	$PCCFailed = $HDDInfo | Where-Object { $_.Power_Cycle_Count -ge $PowerCycles }
-	if ($PCCFailed ) { $DiskHealth.add('PCCErrors',"Power Cycle Count Failed for disks: $($PCCFailed.serial_number)") }
+	if ($PCCFailed ) { 
+		$DiskHealth.add('PCCErrors',"Power Cycle Count Failed for disks: $($PCCFailed.serial_number)")  
+		Write-Host 'PCCErrors',"Power Cycle Count Failed for disks: $($PCCFailed.serial_number)"
+		$DiskHealth = "False"
+	}
 	# Checking Power on Time Status
 	$POTFailed = $HDDInfo | Where-Object { $_.Power_on_time.hours -ge $PowerOnTime }
-	if ($POTFailed) { $DiskHealth.add('POTErrors',"Power on Time for disks failed : $($POTFailed.serial_number)") }
-
-	if (!$DiskHealth) { $DiskHealth = "Healthy" }
+	if ($POTFailed) { 
+		$DiskHealth.add('POTErrors',"Power on Time for disks failed : $($POTFailed.serial_number)")  
+		Write-Host 'POTErrors',"Power on Time for disks failed : $($POTFailed.serial_number)"
+		$DiskHealth = "False"
+	}
 
 	return $DiskHealth
 }
@@ -116,12 +137,15 @@ Install-Smartmontools
 
 # Run a SMART test with smartmontools
 $smartmonDiskHealth = Invoke-Smartmontools
-if (!($smartmonDiskHealth -eq "Healthy")) {
+if (!($smartmonDiskHealth -eq "True")) {
 	# The drive is unhealthy
-	Write-Host "Problem - smartmontools health test found problems on drive $diskName !"
+	Write-Host "Problem - smartmontools health test found problems."
 	Write-Host "Details: $smartmonDiskHealth"
 	# RMM-Alert "Problem - smartmontools health test found problems on drive $diskName !"
 	exit 1
+} else {
+	Write-Host "smartmontools disk health PASSED"
+	exit 0
 }
 
 <#
