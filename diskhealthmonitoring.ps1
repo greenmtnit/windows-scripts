@@ -113,21 +113,27 @@ function Invoke-Smartmontools {
 
 # Start with two easy checks using built-in functions: Get-PhysicalDisk Health and Get-StorageReliabilityCounter
 $disks = Get-PhysicalDisk
-
 foreach ($disk in $disks) {
-	$readErrors = Get-PhysicalDisk | Get-StorageReliabilityCounter
 	if (!($disk.HealthStatus -eq "Healthy")) {
-		Write-Host "Problem! Disk not healthy!"
+		Write-Host "Problem! Disk $($disk.FriendlyName) is NOT healthy!"
 		# RMM-Alert "Problem! Disk not healthy!"
 		exit 1 # Can exit the script here. If there's a problem, that's all you need to know.
 	}
-	elseif ($readErrors.ReadErrorsUncorrected -gt "0") {
-		Write-Host "Problem! Read errors!"
-		# RMM-Alert "Problem - read errors!"
-		exit 1 # Can exit the script here. If there's a problem, that's all you need to know.	 
-	}
-	else {
-		Write-Host "Basic checks passed, moving onto complex checks!"
+    $reliability = Get-StorageReliabilityCounter -PhysicalDisk $disk
+
+    # Check if any error counters are greater than 0
+    if ($reliability.ReadErrorsTotal -gt 0 -or 
+        $reliability.ReadErrorsUncorrected -gt 0 -or 
+        $reliability.WriteErrorsTotal -gt 0 -or 
+        $reliability.WriteErrorsUncorrected -gt 0) {
+        Write-Host "Disk $($disk.FriendlyName) has errors:"
+        Write-Host "Total Read Errors: $($reliability.ReadErrorsTotal)"
+        Write-Host "Uncorrected Read Errors: $($reliability.ReadErrorsUncorrected)"
+        Write-Host "Total Write Errors: $($reliability.WriteErrorsTotal)"
+        Write-Host "Uncorrected Write Errors: $($reliability.WriteErrorsUncorrected)"
+    }
+    else {
+	    Write-Host "Basic checks passed for disk $($disk.FriendlyName)"
 	}
 }
 
