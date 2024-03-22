@@ -49,8 +49,6 @@ function Install-Smartmontools {
 		}
 	}
 }
-
-
 <#
 	.SYNOPSIS
 		Invoke-Smartmontools checks every compatible disk on the computer and runs checks 
@@ -70,11 +68,10 @@ function Invoke-Smartmontools {
 	# Find all connected HDDs
 	$HDDs = (& "C:\Program Files\smartmontools\bin\smartctl.exe" --scan -j | ConvertFrom-Json).devices
 
-	# TODO: Pare down HDDs list to only include disks that are of type SSD or HDD (not USB drives or other things we don't care about)
-
 	$HDDInfo = foreach ($HDD in $HDDs) {
 		(& "C:\Program Files\smartmontools\bin\smartctl.exe" -t short -a -j $HDD.name) | convertfrom-json
 	}
+
 	$DiskHealth = "True"
 	# Checking SMART status
 	$SmartFailed = $HDDInfo | Where-Object { $_.Smart_Status.Passed -ne $true }
