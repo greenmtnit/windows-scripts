@@ -1,6 +1,5 @@
 # Functions
 
-
 <#
 	.SYNOPSIS
 		Install-Smartmontools checks if smartctl.exe is present at C:\Program Files\smartmontools\bin\smartctl.exe
@@ -70,6 +69,9 @@ function Invoke-Smartmontools {
 
 	# Find all connected HDDs
 	$HDDs = (& "C:\Program Files\smartmontools\bin\smartctl.exe" --scan -j | ConvertFrom-Json).devices
+
+	# TODO: Pare down HDDs list to only include disks that are of type SSD or HDD (not USB drives or other things we don't care about)
+
 	$HDDInfo = foreach ($HDD in $HDDs) {
 		(& "C:\Program Files\smartmontools\bin\smartctl.exe" -t short -a -j $HDD.name) | convertfrom-json
 	}
@@ -147,9 +149,3 @@ if (!($smartmonDiskHealth -eq "True")) {
 	Write-Host "smartmontools disk health PASSED"
 	exit 0
 }
-
-<#
-	Additional notes/ todo/ problems:
-
-
-#>
