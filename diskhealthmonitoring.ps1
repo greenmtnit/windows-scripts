@@ -1,37 +1,6 @@
 # Functions
 <#
 	.SYNOPSIS
-		Get-SMARTCompatibility takes in a single drive (as a CimInstance)
-		It checks capabilities band 4, which corresonds to SMART status <- is this real?
-		It returns "True" if it's SMART compatible; otherwise it returns "False"
-#>
-function Get-SMARTCompatibility {
-	param (
-        [Microsoft.Management.Infrastructure.CimInstance]$disk
-    )
-
-	Write-Output "Calling Get-SMARTCompatibiilty for disk $disk"
-
-	try {
-		# Run a command that only works on SMART-compatible disks
-
-	} catch {
-		# The disk is not SMART-compatible
-
-
-	}
-
-	# Check if the disk supports SMART
-    if ($disk.Capabilities -band 4) {
-        Write-Host "$($disk.FriendlyName) supports SMART"
-		return "True"
-    } else {
-        Write-Host "$($disk.FriendlyName) does not support SMART"
-		return "False"
-    }
-}
-<#
-	.SYNOPSIS
 		Install-Smartmontools checks if smartctl.exe is present at C:\Program Files\smartmontools\bin\smartctl.exe
 		If not, it installs smartmontools using chocolatey
 		It returns nothing
@@ -142,41 +111,21 @@ foreach ($disk in $disks) {
 # Easy checks didn't find anything
 # Run deeper checks on every disk
 
-# Iterate through every physical disk
-foreach ($disk in $disks) {
-	$diskName = $disk.FriendlyName
-	# Check if the disk supports SMART.  If so, run a test with smartmontools.  Otherwise, continue to drive-specific checks.
-	if ((Get-SMARTCompatibility -Disk $disk) -eq "True") {
-		# Disk supports SMART
-		# Install Smartmontools, if not already installed
-		Install-Smartmontools
-		
-		# Run a SMART test with smartmontools
-		$smartmonDiskHealth = Invoke-Smartmontools
-		if (!($smartmonDiskHealth -eq "Healthy")) {
-			# The drive is unhealthy
-			Write-Host "Problem - smartmontools health test found problems on drive $diskName !"
-			Write-Host "Details: $smartmonDiskHealth"
-			# RMM-Alert "Problem - smartmontools health test found problems on drive $diskName !"
-			exit 1
-		}
+# Install Smartmontools, if not already installed
+Install-Smartmontools
 
-	} else {
-		# Disk does not support SMART
-		Write-Output "Disk $diskName does not support SMART. Continuing to disk-type-based checks."
-	}
-
-	# Determine disk type
-	$diskType = $disk.MediaType
-	Write-Host "Disk type: $diskType"
-
-	Write-Host $disk.Capabilities
+# Run a SMART test with smartmontools
+$smartmonDiskHealth = Invoke-Smartmontools
+if (!($smartmonDiskHealth -eq "Healthy")) {
+	# The drive is unhealthy
+	Write-Host "Problem - smartmontools health test found problems on drive $diskName !"
+	Write-Host "Details: $smartmonDiskHealth"
+	# RMM-Alert "Problem - smartmontools health test found problems on drive $diskName !"
+	exit 1
 }
 
 <#
 	Additional notes/ todo/ problems:
 
-	- Find a way to run smartmonDiskHealth on only the specific $disk being checked. Right now it runs the full thing for every disk, for every disk. Very inefficient.
-	- Identify and remove redundancy
 
 #>
