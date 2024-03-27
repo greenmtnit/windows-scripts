@@ -9,21 +9,25 @@ function Start-ServiceWithRetries {
         [string]$ServiceName,
         [int]$MaxAttempts = 3,
         [int]$RetryIntervalSeconds = 20
+
     )
 
     $attempts = 0
-    do {
+    $service = Get-Service $ServiceName
+
+    while (($service.Status -ne 'Running') -and ($attempts -lt $MaxAttempts)) {
         $attempts++
         Write-Host "Attempt $attempts : Starting service $ServiceName"
         Start-Service $ServiceName
         Start-Sleep -Seconds $RetryIntervalSeconds
-        $service = Get-Service $ServiceName
-    } while (($service.Status -ne 'Running') -and ($attempts -lt $MaxAttempts))
+        if ($service.Status -eq 'Running') {
+            Write-Host "Service $ServiceName was found stopped and was successfully started by script."
+            Log-Activity -Message "Service $ServiceName was not running and was started by script." -EventName "Service Started by Script"
+        }
+    } 
 
     if ($service.Status -eq 'Running') {
-        Write-Host "Service $ServiceName started successfully."
-        #Write to the Syncro asset event logs
-        Log-Activity -Message "Service $ServiceName was not running and was started by script." -EventName "Service Started by Script"
+        Write-Host "Service $ServiceName is running."
         return $true
     } else {
         Write-Host "Failed to start service $ServiceName after $MaxAttempts attempts."
