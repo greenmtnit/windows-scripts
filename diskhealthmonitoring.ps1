@@ -77,7 +77,7 @@ function Invoke-Smartmontools {
 	$HDDInfo = foreach ($HDD in $HDDs) {
 		(& "C:\Program Files\smartmontools\bin\smartctl.exe" -t short -a -j $HDD.name) | convertfrom-json
 	}
-	$HDDInfo
+	Write-Host $HDDInfo
 	$DiskHealth = "True"
     $DiskHealthDetails = ""
 	# Checking SMART status
