@@ -74,10 +74,45 @@ function Invoke-Smartmontools {
 
 	# TODO: Pare down HDDs list to only include disks that are of type SSD or HDD (not USB drives or other things we don't care about)
 
+	#HDDInfo returns a custom PowerShell object with nested properties
 	$HDDInfo = foreach ($HDD in $HDDs) {
 		(& "C:\Program Files\smartmontools\bin\smartctl.exe" -t short -a -j $HDD.name) | convertfrom-json
 	}
-	$HDDInfo
+	#################################
+	#TESTING - WRITE HDDINFO NICELY
+	#################################
+	$model = $HDDInfo.model_name 
+	$serial = $HDDInfo.serial_number
+    Write-Host "Info for disk $model with SN $serial"
+	function Print-ObjectProperties {
+		param (
+			[Parameter(Mandatory = $true)]
+			$Object,
+			[string]$Indent = ""
+		)
+	
+		$Object.PSObject.Properties | ForEach-Object {
+			Write-Host "$Indent$($_.Name):"
+			$Value = $_.Value
+			if ($Value -is [System.Management.Automation.PSCustomObject]) {
+				Print-ObjectProperties -Object $Value -Indent "$Indent    "
+			} elseif ($Value -is [System.Object[]]) {
+				$Value | ForEach-Object {
+					Print-ObjectProperties -Object $_ -Indent "$Indent    "
+				}
+			} else {
+				Write-Host "$Indent    $Value"
+			}
+		}
+	}
+	
+    # Print HDDInfo
+	Print-ObjectProperties -Object $HDDInfo
+	
+	#################################
+	#END OF TESTING SECTION TO WRITE HDDINFO NICELY
+	#################################
+
 	$DiskHealth = "True"
     $DiskHealthDetails = ""
 	# Checking SMART status
