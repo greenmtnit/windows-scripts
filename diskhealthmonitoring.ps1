@@ -1,7 +1,9 @@
+Import-Module $env:SyncroModule
+
 # Functions
 
 <#
-	.SYNOPSIS
+    .SYNOPSIS
 		Install-Smartmontools checks if smartctl.exe is present at C:\Program Files\smartmontools\bin\smartctl.exe
 		If not, it installs smartmontools using chocolatey
 		It returns nothing
@@ -64,7 +66,7 @@ function Invoke-Smartmontools {
 	############ Thresholds #############
 	$PowerOnTime = 35063 #about 4 years constant runtime.
 	$PowerCycles = 4000 #4000 times of turning drive on and off
-	$Temperature = 60 #60 degrees celcius
+	$Temperature = 70 #70 degrees celcius
 	############ End Thresholds #########
 
 	# Find all connected HDDs
@@ -75,11 +77,13 @@ function Invoke-Smartmontools {
 	$HDDInfo = foreach ($HDD in $HDDs) {
 		(& "C:\Program Files\smartmontools\bin\smartctl.exe" -t short -a -j $HDD.name) | convertfrom-json
 	}
+	$HDDInfo
 	$DiskHealth = "True"
+    $DiskHealthDetails = ""
 	# Checking SMART status
 	$SmartFailed = $HDDInfo | Where-Object { $_.Smart_Status.Passed -ne $true }
 	if ($SmartFailed) {
-		$DiskHealth.add('SmartErrors',"Smart Failed for disks: $($SmartFailed.serial_number)") 
+		$DiskHealthDetails = $DiskHealthDetails + "Smart Failed for disks: $($SmartFailed.serial_number)"
 		Write-Host 'SmartErrors',"Smart Failed for disks: $($SmartFailed.serial_number)"
 		$DiskHealth = "False"
 	}
@@ -87,8 +91,9 @@ function Invoke-Smartmontools {
 	$TempFailed = $HDDInfo | Where-Object { 
 		$_.temperature.current -ge $Temperature
 	}
+	Write-Host $TempFailed
 	if ($TempFailed) { 
-		$DiskHealth.add('TempErrors',"Temperature failed for disks: $($TempFailed.serial_number)") 
+		$DiskHealthDetails = $DiskHealthDetails + "Temperature failed for disks: $($TempFailed.serial_number) `n" 
 		Write-Host 'TempErrors',"Temperature failed for disks: $($TempFailed.serial_number)"
 		$DiskHealth = "False"
 
@@ -96,17 +101,19 @@ function Invoke-Smartmontools {
 	# Checking Power Cycle Count status
 	$PCCFailed = $HDDInfo | Where-Object { $_.Power_Cycle_Count -ge $PowerCycles }
 	if ($PCCFailed ) { 
-		$DiskHealth.add('PCCErrors',"Power Cycle Count Failed for disks: $($PCCFailed.serial_number)")  
+		$DiskHealthDetails = $DiskHealthDetails + "Power Cycle Count Failed for disks: $($PCCFailed.serial_number) `n" 
 		Write-Host 'PCCErrors',"Power Cycle Count Failed for disks: $($PCCFailed.serial_number)"
 		$DiskHealth = "False"
 	}
 	# Checking Power on Time Status
 	$POTFailed = $HDDInfo | Where-Object { $_.Power_on_time.hours -ge $PowerOnTime }
 	if ($POTFailed) { 
-		$DiskHealth.add('POTErrors',"Power on Time for disks failed : $($POTFailed.serial_number)")  
+		$DiskHealthDetails = $DiskHealthDetails + "Power on Time for disks failed : $($POTFailed.serial_number) `n"
 		Write-Host 'POTErrors',"Power on Time for disks failed : $($POTFailed.serial_number)"
 		$DiskHealth = "False"
 	}
+    
+    Write-Host $DiskHealthDetails
 
 	return $DiskHealth
 }
@@ -116,7 +123,7 @@ $disks = Get-PhysicalDisk
 foreach ($disk in $disks) {
 	if (!($disk.HealthStatus -eq "Healthy")) {
 		Write-Host "Problem! Disk $($disk.FriendlyName) is NOT healthy!"
-		# RMM-Alert "Problem! Disk not healthy!"
+		RMM-Alert -Category 'DISK HEALTH' -Body "Problem! Disk not healthy!"
 		exit 1 # Can exit the script here. If there's a problem, that's all you need to know.
 	}
     $reliability = Get-StorageReliabilityCounter -PhysicalDisk $disk
@@ -149,7 +156,7 @@ if (!($smartmonDiskHealth -eq "True")) {
 	# The drive is unhealthy
 	Write-Host "Problem - smartmontools health test found problems."
 	Write-Host "Details: $smartmonDiskHealth"
-	# RMM-Alert "Problem - smartmontools health test found problems on drive $diskName !"
+	RMM-Alert -Category 'DISK HEALTH' -Body "Problem - smartmontools health test found problems on drive $diskName !"
 	exit 1
 } else {
 	Write-Host "smartmontools disk health PASSED"
