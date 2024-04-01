@@ -1,9 +1,50 @@
+<#
+.SYNOPSIS
+    This PowerShell script performs basic and SMART disk checks for monitoring disk health.
+
+.DESCRIPTION
+    This script checks the health status of disks attached to the system. It perform both basic checks using native PowerShell commands and SMART data analysis. It identifies potential issues such as failed self tests and read errors. The script also initiates SMART tests and generates Syncro RMM alerts if problems are detected.
+
+.NOTES
+    - This script requires administrative privileges to run.
+    - The script uses Chocolatey to install the Smartmontools package. It will install both Chocolately and Smartmontools.
+
+.EXAMPLE
+    .\DiskHealthCheck.ps1
+    Runs the script to perform disk health checks.
+
+#>
+
+#Import the Syncro module
 #TESTING
 #Import-Module $env:SyncroModule
 
-$suppressRMMAlerts = $true
+# VARIABLE DEFINITIONS
 
-# Function to print a custom PowerShell object with nested properties in a readable format
+#TESTING
+$testingMode = $false # Set to $true to set check values that will be sure to generate alerts
+#$suppressRMMAlerts = $false # Set to $true to disable RMM alerts
+#TESTING
+$suppressRMMAlerts = $true # Set to $true to disable RMM alerts
+#
+$debugSMART = $false # Set to $true to generate verbose output of SMART info
+$smartInstallDelay = $true # Delay smartmontools install by up to 5 minutes, to avoid excessive downloads
+# SMART value thresholds. Defaults are usually good.
+$maxTemperature = 70 # Maximum disk temperature in Celcius. Default = 70
+$maxPowerCycles = 4000 # How many times the drive was turned off and on. Default = 4000
+$maxPowerOnTime = 35063 # How many hours the drive has been on. Default = 35064 (about 4 years)
+$maxTestInterval = 168 # Max hours between SMART tests. Default = 168 hours (1 week)
+
+# TESTING VARIABLES
+if ($testingMode) {
+    $maxPowerOnTime = 0
+    $maxTemperature = 0
+    # $maxTestInternval = -1 # Uncomment to force a self-test for supported disks
+}
+
+# FUNCTION DEFINITIONS
+
+# Function to print a custom PowerShell object with nested properties in a readable format. Used for printing verbose SMART data.
 function Print-ObjectProperties {
     param (
         [Parameter(Mandatory = $true)]
@@ -62,13 +103,27 @@ function Write-IndentedHost {
 
 # Function to install smartmontools, if not already installed
 function Install-Smartmontools {
-    $smartctlPath = "C:\Program Files\smartmontools\bin\smartctl.exe"
-    if (Test-Path $smartctlPath) {
-        Write-Host "Found smartctl at $smartctlPath, using it"
+    param (
+        [string]$ProgramPath
+    )
+
+    if ((Test-Path $ProgramPath) -and (! $testingMode)) {
+        Write-Host "Found smartctl at $ProgramPath, using it"
     }
     else {
-        # We need to install smartctl, it wasn't found
-        Write-Host "smartctl not found, installing it"
+        if ($testingMode) {
+            Write-Host "Running in test mode, running smartctl install regardless of current install status"
+        }
+        else {
+            Write-Host "smartctl not found, installing it"
+        }
+
+        # Check for delay
+        if ($smartInstallDelay) {
+            $randomDelay = Get-Random -Maximum 300
+            Write-Host "Delaying for $randomDelay seconds"
+            Start-Sleep -Seconds $randomDelay
+        }
 
         $syncroPath = "$env:ProgramFiles\RepairTech\Syncro\kabuto_app_manager\choco.exe"
         $chocoPath = "$env:ProgramData\chocolatey\choco.exe"
@@ -106,26 +161,44 @@ function Install-Smartmontools {
             Write-Host "Error installing $packageName : $_"
         }
     }
-    return $smartctlPath
 }
+
+# MAIN SCRIPT LOGIC
+
+# Actual script code starts here
+
+# Check if Syncro asset custom field $ignoreDiskErrors is set. If so, exit
+if ($ignoreDiskErrors) {
+    Write-Host "`$ignoreDiskErrors is set. Exiting."
+    exit 0
+} 
 
 # Initialize an empty array to store disk errors
 $diskErrors = @()
 
-# BASIC TESTS - using native PowerShell commands
+# Detect testing mode
+if ($testingMode) {
+    Write-Host "Running in testing mode."
+    $diskErrors += "Script ran in test mode."
+}
+
+# BASIC TESTS 
+# These use native PowerShell commands
 # These need to run entirely separate from the later SMART checks. 
-# Probably can't do a single loop through the disks all at once, because SMART uses its own disk format - /dev/sda, sdb, etc.
+# We can't do a single loop through the disks all at once, because SMART uses its own disk format - /dev/sda, sdb, etc.
 Write-Host "Performing basic checks..."
 
 $disks = Get-PhysicalDisk
 foreach ($disk in $disks) {
     Write-Host "`nPerforming basic checks for disk", $disk.FriendlyName "(Physical Disk", $disk.DeviceId, ")"
+    # The most basic check - does Windows report the disk status as healthy?
     if (!($disk.HealthStatus -eq "Healthy")) {
         Write-IndentedHost "WARNING! Disk is NOT healthy!"
         $diskErrors += "Disk $disk.FriendlyName health status failed!"
         $diskHealth = $false
     }
 
+    # Check values from Get-StorageReliabilityCounter
     $reliability = Get-StorageReliabilityCounter -PhysicalDisk $disk
 
     # Check if any error counters are greater than 0
@@ -156,54 +229,42 @@ foreach ($disk in $disks) {
     else {
         Write-IndentedHost "Disk passed basic checks."
     }
-
-    if (! $diskHealth) {
-        $Issues = $true
-    }
     
 }
 
 # SMART CHECKS
-
-# Define thresholds for SMART values
-$maxPowerCycles = 4000 # 4000 times of turning drive on and off
-#$maxPowerOnTime = 35063 # about 4 years constant runtime.
-#TESTING
-$maxPowerOnTime = 100
-#TESTING
-$maxTemperature = 50
-#$maxTemperature = 70 # 70 degrees Celsius
-$maxTestInterval = 168 # Max hours between SMART tests. Default = 168 hours (1 week)
-
+# The second set of tests, using smartmontools
 Write-Host "`nPerforming SMART checks..."
 
-#Make sure smartmontools is installed and get path to smartctl.exe
-$smartctlPath = Install-Smartmontools
+# Make sure smartmontools is installed and get path to smartctl.exe
+$smartctlPath = "C:\Program Files\smartmontools\bin\smartctl.exe"
+Install-Smartmontools -ProgramPath $smartctlPath
 
-#Get a list of all disks
-$HDDs = (& "$smartctlPath" --scan -j | ConvertFrom-Json).devices
+# Get a list of all disks
+$smartDisks = (& "$smartctlPath" --scan -j | ConvertFrom-Json).devices
 
-foreach ($HDD in $HDDs){
+# Loop through the disks and analyze SMART data
+foreach ($smartDisk in $smartDisks){
     # This is what actually gets the SMART data
-    # $HDDInfo will be a custom PowerShell object with nested properties
-    $HDDInfo = (& "C:\Program Files\smartmontools\bin\smartctl.exe" -a -j $HDD.name) | ConvertFrom-Json
+    # $smartData will be a custom PowerShell object with nested properties
+    $smartData = (& "C:\Program Files\smartmontools\bin\smartctl.exe" -a -j $smartDisk.name) | ConvertFrom-Json
 
     # Fix a bug with smartctl returning exit code 4. See here: https://github.com/prometheus-community/smartctl_exporter/issues/152
     if ($LASTEXITCODE = 4) {
         $LASTEXITCODE = 0
     }
     
-    # Print basic disk info
-    $name = $HDD.name
-    $model = $HDDInfo.model_name
-    $serial = $HDDInfo.serial_number
+    # Assign variables for basic disk info
+    $name = $smartDisk.name
+    $model = $smartData.model_name
+    $serial = $smartData.serial_number
     
     # Print header    
     Write-Host "`nChecking SMART data for $name"
 
     # Check if the disk is supported
-    $messages = $HDDInfo.smartctl.messages.string
-    $smartSupport = $HDDInfo.smart_support.available
+    $messages = $smartData.smartctl.messages.string
+    $smartSupport = $smartData.smart_support.available
     
     if ($messages -match "Unknown USB|Open Failed" -or !$smartSupport) {
 
@@ -232,15 +293,18 @@ foreach ($HDD in $HDDs){
             Write-IndentedHost "Serial: unknown"
         }
  
-        # UNCOMMENT FOR TESTING - Print HDDInfo
-        #Print-ObjectProperties -Object $HDDInfo
+        # Check for SMART debug mode and if set, print full SMART data
+        if ($debugSMART) {
+             Print-ObjectProperties -Object $smartData
+        }
  
+        # Initialize $diskHealth
         $diskHealth = "True"
 
         # Check basic SMART status
-        $smartStatus = $HDDInfo.smart_status.passed
+        $smartStatus = $smartData.smart_status.passed
         if (! $smartStatus) {
-            Write-IndentedHost "WARNING! SMART STATUS FAILED. Back up data and replace ASAP!"
+            Write-IndentedHost "WARNING! SMART STATUS FAILED!"
             $diskErrors += "SMART status failed for $name"
             $diskHealth = $false
         }
@@ -248,15 +312,15 @@ foreach ($HDD in $HDDs){
             Write-IndentedHost "SMART status: PASSED. Note: this does not always mean the disk is healthy."
         }
         
-        # SMART DATA CHECKS
+        # SMART DATA VALUE CHECKS
 
         # Check Power Cycle Count
         $parameterName = "Power cycle count"
-        if (! $HDDInfo.power_cycle_count) {
+        if (! $smartData.power_cycle_count) {
             Write-IndentedHost "ERROR: failed to retrieve $parameterName"
         }
         else {
-            $powerCycleCount = $HDDInfo.power_cycle_count
+            $powerCycleCount = $smartData.power_cycle_count
             $diskHealth = Check-Threshold -Value $powerCycleCount -Threshold $maxPowerCycles -ParameterName $parameterName
             if (! $diskHealth) {
                 $diskErrors += "Disk $name has exceed the max $parameterName."
@@ -265,11 +329,11 @@ foreach ($HDD in $HDDs){
 
         # Check Power On Time
         $parameterName = "Power on time"
-        if (! $HDDInfo.power_on_time.hours) {
+        if (! $smartData.power_on_time.hours) {
             Write-IndentedHost "ERROR: failed to retrieve $parameterName"
         }
         else {
-            $powerOnTime = $HDDInfo.power_on_time.hours
+            $powerOnTime = $smartData.power_on_time.hours
             $diskHealth = Check-Threshold -Value $powerOnTime -Threshold $maxPowerOnTime -ParameterName $parameterName
             if (! $diskHealth) {
                 $diskErrors += "Disk $name has exceed the max $parameterName."
@@ -278,23 +342,23 @@ foreach ($HDD in $HDDs){
 
         # Check Temperature
         $parameterName = "Temperature"
-        if (! $HDDInfo.temperature.current) {
-            Write-IndentedHost "ERROR: failed to retrive $parameterName"
+        if (! $smartData.temperature.current) {
+            Write-IndentedHost "ERROR: failed to retrieve $parameterName"
         }
         else {
-            $temperature = $HDDInfo.temperature.current
+            $temperature = $smartData.temperature.current
             $diskHealth = Check-Threshold -Value $temperature -Threshold $maxTemperature -ParameterName $parameterName
             if (! $diskHealth) {
-                $diskErrors += "Disk $name has exceed the max $parameterName."
+                $diskErrors += "Disk $name has exceeded the max $parameterName."
             }
         }      
         
          # Check for Reallocated Sectors. This is a little different, so won't work with the Check-Threshold function
-        if (! $HDDInfo.ata_smart_attributes.table  ) {
+        if (! $smartData.ata_smart_attributes.table  ) {
             Write-IndentedHost "Could not retrieve ATA SMART Attributes table. This is normal for some disks, such as NVMe drives."
         }
         else {
-            $reallocatedSectors = ($HDDInfo.ata_smart_attributes.table | Where-Object { $_.name -eq "Reallocated_Sector_Ct" }| Select-Object -ExpandProperty raw).value
+            $reallocatedSectors = ($smartData.ata_smart_attributes.table | Where-Object { $_.name -eq "Reallocated_Sector_Ct" }| Select-Object -ExpandProperty raw).value
             if ($reallocatedSectors -gt 0) {
                 Write-IndentedHost "WARNING! Disk has $reallocatedSectors reallocated sectors and is likely failing."
                 $diskErrors += "Disk $name has $reallocatedSectors reallocated sectors."
@@ -305,12 +369,12 @@ foreach ($HDD in $HDDs){
         }
 
         # Check for recent self test results, and also run one if not run recently
-        if (! $HDDInfo.ata_smart_data.capabilities.self_tests_supported) {
+        if (! $smartData.ata_smart_data.capabilities.self_tests_supported) {
             Write-IndentedHost "Drive is not capable of self-tests. This is normal for some disks, such as NVMe drives."
         }
         else {
             #Check if a SMART test that took place within the test interval
-            $lastTest = $HDDInfo.ata_smart_self_test_log.standard.table[0].lifetime_hours
+            $lastTest = $smartData.ata_smart_self_test_log.standard.table[0].lifetime_hours
             $difference = [Math]::Abs($powerOnTime - $lastTest)
 
             # Check if the difference is more than the max interval
@@ -326,7 +390,7 @@ foreach ($HDD in $HDDs){
             # Check for selftests that ended in read failure
             $readFailureFound = $false
 
-            foreach ($testLog in $HDDInfo.ata_smart_self_test_log.standard.table) {
+            foreach ($testLog in $smartData.ata_smart_self_test_log.standard.table) {
                 $status = $testLog.status.string
                 if ($status -match "failure") {
                     $readFailureFound = $true
@@ -340,7 +404,6 @@ foreach ($HDD in $HDDs){
             }
 
         }
-
 
         # Final ruling on disk health
         if ($diskHealth) {
