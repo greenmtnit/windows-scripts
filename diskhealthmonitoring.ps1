@@ -71,18 +71,22 @@ function Invoke-Smartmontools {
     # Find all connected HDDs
     $HDDs = (& "C:\Program Files\smartmontools\bin\smartctl.exe" --scan -j | ConvertFrom-Json).devices
 
-    # TODO: Pare down HDDs list to only include disks that are of type SSD or HDD (not USB drives or other things we don't care about)
-
     # HDDInfo returns a custom PowerShell object with nested properties
     foreach ($HDD in $HDDs){
 		$name =$HDD.name
-        Write-Host "Checking $name"
+        Write-Host "Checking SMART data for $name"
 
         $HDDInfo = (& "C:\Program Files\smartmontools\bin\smartctl.exe" -t short -a -j $HDD.name) | convertfrom-json
 
         $model = $HDDInfo.model_name 
         $serial = $HDDInfo.serial_number
+
+        # Check if this is a device we care about
+		# if ($messages.string -match "Unknown USB|Open Failed") 
+
+
         Write-Host "Info for disk $model with SN $serial"
+		Write-Host $HDDInfo.messages
         function Print-ObjectProperties {
             param (
                 [Parameter(Mandatory = $true)]
@@ -152,6 +156,7 @@ function Invoke-Smartmontools {
 # Start with two easy checks using built-in functions: Get-PhysicalDisk Health and Get-StorageReliabilityCounter
 $disks = Get-PhysicalDisk
 foreach ($disk in $disks) {
+	Write-Host "Performing basic checks for $disk.FriendlyName"
     if (!($disk.HealthStatus -eq "Healthy")) {
         Write-Host "Problem! Disk $($disk.FriendlyName) is NOT healthy!"
         RMM-Alert -Category 'DISK HEALTH' -Body "Problem! Disk not healthy!"
@@ -174,9 +179,6 @@ foreach ($disk in $disks) {
         Write-Host "Basic checks passed for disk $($disk.FriendlyName)"
     }
 }
-
-# Easy checks didn't find anything
-# Run deeper checks on every disk
 
 # Install Smartmontools, if not already installed
 Install-Smartmontools
