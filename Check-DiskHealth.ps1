@@ -368,7 +368,7 @@ foreach ($smartDisk in $smartDisks){
                     $diskHealth = $true
                 }
                 else {
-                    $diskErrors += "Disk $name has exceed the max $parameterName."
+                    $diskErrors += "Disk $model has exceed the max $parameterName."
                 }
             }
         }
@@ -387,7 +387,7 @@ foreach ($smartDisk in $smartDisks){
                     $diskHealth = $true
                 }
                 else {
-                    $diskErrors += "Disk $name has exceed the max $parameterName."
+                    $diskErrors += "Disk $model has exceed the max $parameterName."
                 }
             }
         }
@@ -401,7 +401,7 @@ foreach ($smartDisk in $smartDisks){
             $temperature = $smartData.temperature.current
             $diskHealth = Check-Threshold -Value $temperature -Threshold $maxTemperature -ParameterName $parameterName
             if (! $diskHealth) {
-                $diskErrors += "Disk $name has exceeded the max $parameterName."
+                $diskErrors += "Disk $model has exceeded the max $parameterName."
             }
         }      
         
@@ -413,7 +413,7 @@ foreach ($smartDisk in $smartDisks){
             $reallocatedSectors = ($smartData.ata_smart_attributes.table | Where-Object { $_.name -eq "Reallocated_Sector_Ct" }| Select-Object -ExpandProperty raw).value
             if ($reallocatedSectors -gt 0) {
                 Write-IndentedHost "WARNING! Disk has $reallocatedSectors reallocated sectors and is likely failing."
-                $diskErrors += "Disk $name has $reallocatedSectors reallocated sectors."
+                $diskErrors += "Disk $model has $reallocatedSectors reallocated sectors."
             }
             elseif (! ($reallocatedSectors -eq $null )) {
                 Write-IndentedHost "Reallocated sectors: $reallocatedSectors"
@@ -452,7 +452,7 @@ foreach ($smartDisk in $smartDisks){
                 }
                 if ($readFailureFound) {
                     Write-IndentedHost "WARNING: found failed SMART tests!"
-                    $diskErrors += "Disk $name has failed self tests"
+                    $diskErrors += "Disk $model has failed self tests"
                     $diskHealth = $false
                 }    
             }
