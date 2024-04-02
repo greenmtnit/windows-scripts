@@ -15,21 +15,14 @@
 
 #>
 
-#Import the Syncro module
-#TESTING
-#Import-Module $env:SyncroModule
-
 # VARIABLE DEFINITIONS
-
-#TESTING
+# You can edit these if you need to.
 $testingMode = $false # Set to $true to set check values that will be sure to generate alerts
-#$suppressRMMAlerts = $false # Set to $true to disable RMM alerts
-#TESTING
-$suppressRMMAlerts = $true # Set to $true to disable RMM alerts
-#
+$suppressRMMAlerts = $false # Set to $true to disable RMM alerts
 $debugSMART = $false # Set to $true to generate verbose output of SMART info
 $smartInstallDelay = $true # Delay smartmontools install by up to 5 minutes, to avoid excessive downloads
-# SMART value thresholds. Defaults are usually good.
+$importSyncroModule = $true # Use the Syncro module. Typically, you don't need to touch this.
+# SMART value thresholds. Defaults are usually good, but you can edit them if you want.
 $maxTemperature = 70 # Maximum disk temperature in Celcius. Default = 70
 $maxPowerCycles = 4000 # How many times the drive was turned off and on. Default = 4000
 $maxPowerOnTime = 35063 # How many hours the drive has been on. Default = 35064 (about 4 years)
@@ -39,10 +32,26 @@ $maxTestInterval = 168 # Max hours between SMART tests. Default = 168 hours (1 w
 if ($testingMode) {
     $maxPowerOnTime = 0
     $maxTemperature = 0
-    # $maxTestInternval = -1 # Uncomment to force a self-test for supported disks
+    # $maxTestInternval = -1 # Uncomment to force a self-test every time for supported disks
+    $importSyncroModule = $false # Comment this out to enable Syncro module in test mode
+    $suppressRMMAlerts = $false # Comment this line out to enable RMM alerts in testing mode. You should also set $importSyncroModule to $true.
+}
+
+# Import the Syncro module
+if ($importSyncroModule) {
+    Import-Module $env:SyncroModule
 }
 
 # FUNCTION DEFINITIONS
+
+# Function to check if script is running on a virtual machine
+function Check-VM {
+    $model = Get-CimInstance win32_computersystem | select Model
+    if ($model -match "virtual") {
+        return $true
+    }
+    return $false
+}
 
 # Function to print a custom PowerShell object with nested properties in a readable format. Used for printing verbose SMART data.
 function Print-ObjectProperties {
@@ -168,10 +177,16 @@ function Install-Smartmontools {
 # Actual script code starts here
 
 # Check if Syncro asset custom field $ignoreDiskErrors is set. If so, exit
-if ($ignoreDiskErrors) {
-    Write-Host "`$ignoreDiskErrors is set. Exiting."
+if ($ignoreAllDiskErrors) {
+    Write-Host "`$ignoreAllDiskErrors is set. Exiting."
     exit 0
 } 
+
+# Check if running in a VM. If so, no need to check disks. Exit.
+if (Check-VM) {
+    Write-Host "Detected script is running in a VM. No need to check disks. Exiting!"
+    exit 0
+}
 
 # Initialize an empty array to store disk errors
 $diskErrors = @()
@@ -243,6 +258,10 @@ Install-Smartmontools -ProgramPath $smartctlPath
 # Get a list of all disks
 $smartDisks = (& "$smartctlPath" --scan -j | ConvertFrom-Json).devices
 
+# Initialize an array of serial numbers. Helps handle issue where duplicate disks are detected by SMART.
+# Sometimes the same disk will appear twice, e.g. as both /dev/sda and /dev/csmi0,1 . By checking the SN, we avoid duplicate disks. 
+$diskSerials = @()
+
 # Loop through the disks and analyze SMART data
 foreach ($smartDisk in $smartDisks){
     # This is what actually gets the SMART data
@@ -258,6 +277,17 @@ foreach ($smartDisk in $smartDisks){
     $name = $smartDisk.name
     $model = $smartData.model_name
     $serial = $smartData.serial_number
+
+    # Check for serial in $diskSerials array to handle duplicate disk issue
+    if ($diskSerials.Contains($serial)) {
+        Write-Host "`n$name : Duplicate serial number detected, skipping."
+        continue
+    }
+    
+    # Add serial to $diskSerials array to help with duplicate check
+    if ($serial) {
+        $diskSerials += $serial
+    }
     
     # Print header    
     Write-Host "`nChecking SMART data for $name"
@@ -314,6 +344,10 @@ foreach ($smartDisk in $smartDisks){
         
         # SMART DATA VALUE CHECKS
 
+        # POWER CHECKS
+        # These aren't as serious. They're only thresholds past which the disk is more likely to fail.
+        # You can set $ignoreDiskPowerErrors in Syncro to ignore these checks 
+
         # Check Power Cycle Count
         $parameterName = "Power cycle count"
         if (! $smartData.power_cycle_count) {
@@ -323,8 +357,14 @@ foreach ($smartDisk in $smartDisks){
             $powerCycleCount = $smartData.power_cycle_count
             $diskHealth = Check-Threshold -Value $powerCycleCount -Threshold $maxPowerCycles -ParameterName $parameterName
             if (! $diskHealth) {
-                $diskErrors += "Disk $name has exceed the max $parameterName."
-            }    
+                if ($ignoreDiskPowerErrors) {
+                    Write-IndentedHost "A power error was detected, but `$ignoreDiskPowerErrors is set. Supressing alert."
+                    $diskHealth = $true
+                }
+                else {
+                    $diskErrors += "Disk $name has exceed the max $parameterName."
+                }
+            }
         }
 
         # Check Power On Time
@@ -336,7 +376,13 @@ foreach ($smartDisk in $smartDisks){
             $powerOnTime = $smartData.power_on_time.hours
             $diskHealth = Check-Threshold -Value $powerOnTime -Threshold $maxPowerOnTime -ParameterName $parameterName
             if (! $diskHealth) {
-                $diskErrors += "Disk $name has exceed the max $parameterName."
+                if ($ignoreDiskPowerErrors) {
+                    Write-IndentedHost "A power error was detected, but `$ignoreDiskPowerErrors is set. Supressing alert."
+                    $diskHealth = $true
+                }
+                else {
+                    $diskErrors += "Disk $name has exceed the max $parameterName."
+                }
             }
         }
 
@@ -373,34 +419,42 @@ foreach ($smartDisk in $smartDisks){
             Write-IndentedHost "Drive is not capable of self-tests. This is normal for some disks, such as NVMe drives."
         }
         else {
-            #Check if a SMART test that took place within the test interval
-            $lastTest = $smartData.ata_smart_self_test_log.standard.table[0].lifetime_hours
-            $difference = [Math]::Abs($powerOnTime - $lastTest)
-
-            # Check if the difference is more than the max interval
-            if ($difference -gt $maxTestInterval) {
-                Write-IndentedHost "No SMART test has run in the past $maxTestInterval hours. Starting short test now."
-                & "$smartctlPath" -t short $name --quietmode=errorsonly
-            }
-
-            else {
-                Write-IndentedHost "Disk supports self-tests and has a recent self-test logged."
-            }
-
-            # Check for selftests that ended in read failure
-            $readFailureFound = $false
-
-            foreach ($testLog in $smartData.ata_smart_self_test_log.standard.table) {
-                $status = $testLog.status.string
-                if ($status -match "failure") {
-                    $readFailureFound = $true
-                    break  # No need to continue once a failure is found
+            #Check if a SMART test took place within the test interval
+            if ($smartData.ata_smart_self_test_log.standard.table) {
+                $lastTest = $smartData.ata_smart_self_test_log.standard.table[0].lifetime_hours
+                $difference = [Math]::Abs($powerOnTime - $lastTest)
+    
+                # Check if the difference is more than the max interval
+                if ($difference -gt $maxTestInterval) {
+                    Write-IndentedHost "No SMART test has run in the past $maxTestInterval hours. Starting short test now."
+                    & "$smartctlPath" -t short $name --quietmode=errorsonly
                 }
+    
+                else {
+                    Write-IndentedHost "Disk supports self-tests and has a recent self-test logged."
+                }
+    
+                # Check for selftests that ended in read failure
+                $readFailureFound = $false
+    
+                foreach ($testLog in $smartData.ata_smart_self_test_log.standard.table) {
+                    $status = $testLog.status.string
+                    if ($status -match "failure") {
+                        $readFailureFound = $true
+                        break  # No need to continue once a failure is found
+                    }
+                }
+                if ($readFailureFound) {
+                    Write-IndentedHost "WARNING: found failed SMART tests!"
+                    $diskErrors += "Disk $name has failed self tests"
+                    $diskHealth = $false
+                }    
             }
-            if ($readFailureFound) {
-                Write-IndentedHost "WARNING: found failed SMART tests!"
-                $diskErrors += "Disk $name has failed self tests."
-                $diskHealth = $false
+
+            # Handle the case where no SMART test has run yet
+            else {
+                Write-IndentedHost "No SMART test have ever been logged. Initiating short test."
+                & "$smartctlPath" -t short $name --quietmode=errorsonly
             }
 
         }
@@ -424,7 +478,7 @@ if ($diskErrors) {
         Write-Host "An RMM alert would have been generated, but `$supressRMMAlerts is set to true."
     }
     else{
-        RMM-Alert -Category "Disk Health Alert" -Body "Warning! Disk health script found problems: $diskErrors."
+        RMM-Alert -Category "Disk Health Alert" -Body "Warning! Disk health script found problems: $diskErrors"
     }
 }
 
