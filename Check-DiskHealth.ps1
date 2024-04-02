@@ -182,7 +182,7 @@ function Install-Smartmontools {
 
 # Actual script code starts here
 
-# Check if Syncro asset custom field $ignoreDiskErrors is set. If so, exit
+# Check if Syncro asset custom field $ignoreAllDiskErrors is set. If so, exit
 if ($ignoreAllDiskErrors) {
     Write-Host "`$ignoreAllDiskErrors is set. Exiting."
     exit 0
