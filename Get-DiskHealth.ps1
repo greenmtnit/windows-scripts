@@ -17,6 +17,7 @@
 
 # VARIABLE DEFINITIONS
 # You can edit these if you need to.
+
 $testingMode = $false # Set to $true to set check values that will be sure to generate alerts
 $suppressRMMAlerts = $false # Set to $true to disable RMM alerts
 $debugSMART = $false # Set to $true to generate verbose output of SMART info
@@ -34,7 +35,7 @@ if ($testingMode) {
     $maxTemperature = 0
     # $maxTestInternval = -1 # Uncomment to force a self-test every time for supported disks
     $importSyncroModule = $false # Comment this out to enable Syncro module in test mode
-    $suppressRMMAlerts = $false # Comment this line out to enable RMM alerts in testing mode. You should also set $importSyncroModule to $true.
+    $suppressRMMAlerts = $true # Comment this line out to enable RMM alerts in testing mode. You should also set $importSyncroModule to $true.
 }
 
 # Import the Syncro module
@@ -130,8 +131,13 @@ function Install-Smartmontools {
         # Check for delay
         if ($smartInstallDelay) {
             $randomDelay = Get-Random -Maximum 300
-            Write-Host "Delaying for $randomDelay seconds"
-            Start-Sleep -Seconds $randomDelay
+            if ($testingMode) {
+                Write-Host "Testing mode detected. Skipping delay. Would have delayed $randomDelay seconds."
+            }
+            else {
+                Write-Host "Delaying for $randomDelay seconds"
+                Start-Sleep -Seconds $randomDelay
+            }
         }
 
         $syncroPath = "$env:ProgramFiles\RepairTech\Syncro\kabuto_app_manager\choco.exe"
@@ -193,7 +199,7 @@ $diskErrors = @()
 
 # Detect testing mode
 if ($testingMode) {
-    Write-Host "Running in testing mode."
+    Write-Host "NOTICE: RUNNING IN TESTING MODE.`n"
     $diskErrors += "Script ran in test mode."
 }
 
