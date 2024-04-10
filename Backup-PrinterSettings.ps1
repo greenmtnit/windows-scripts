@@ -11,7 +11,7 @@ Import-Module -Name PrintManagement
 
 # Get current timestamp for backup directory
 $Timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
-$BackupDirectory = "C:\Temp\PrinterBackup_$Timestamp"
+$BackupDirectory = "C:\!TECH\PrinterBackup_$Timestamp"
 
 # Create the backup directory
 if (-Not (Test-Path $BackupDirectory -ErrorAction SilentlyContinue)) {
@@ -41,10 +41,14 @@ foreach ($Printer in $PrinterList) {
                 }
             }
             New-HTMLSection -Invisible {
+                New-HTMLSection -HeaderText "Driver Name" {
+                    New-HTMLTable -DataTable "Printer Driver: $($printer.DriverName)"
+                }
+            }
+            New-HTMLSection -Invisible {
                 New-HTMLSection -HeaderText "Port Config" {
                     New-HTMLTable -DataTable $PortConfig
                 }
-
                 New-HTMLSection -HeaderText "Printer Properties" {
                     New-HTMLTable -DataTable $PrinterProperties
                 }
@@ -52,5 +56,10 @@ foreach ($Printer in $PrinterList) {
         }
     } -FilePath "$BackupDirectory\$($Printer.name) PrinterDocumentation.html" -Online
 }
+
+#Create README
+$readme = "$BackupDirectory\README.txt"
+New-Item -Path $readme | Out-Null
+Add-Content -Path $readme -Value "Printer backup created with this script: https://github.com/greenmtnit/windows-scripts/blob/main/Backup-PrinterSettings.ps1"
 
 Write-Host "Backed up printer config to $BackupDirectory"
