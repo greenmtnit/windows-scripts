@@ -15,33 +15,91 @@
 
 #>
 
-# VARIABLE DEFINITIONS
-# You can edit these if you need to.
-
-$testingMode = $false # Set to $true to set check values that will be sure to generate alerts
-$suppressRMMAlerts = $false # Set to $true to disable RMM alerts
-$debugSMART = $false # Set to $true to generate verbose output of SMART info
-$smartInstallDelay = $true # Delay smartmontools install by up to 5 minutes, to avoid excessive downloads
-$importSyncroModule = $true # Use the Syncro module. Typically, you don't need to touch this.
-# SMART value thresholds. Defaults are usually good, but you can edit them if you want.
-$maxTemperature = 70 # Maximum disk temperature in Celcius. Default = 70
-$maxPowerCycles = 4000 # How many times the drive was turned off and on. Default = 4000
-$maxPowerOnTime = 35063 # How many hours the drive has been on. Default = 35064 (about 4 years)
-$maxTestInterval = 168 # Max hours between SMART tests. Default = 168 hours (1 week)
-
-# TESTING VARIABLES
-if ($testingMode) {
-    $maxPowerOnTime = 0
-    $maxTemperature = 0
-    # $maxTestInternval = -1 # Uncomment to force a self-test every time for supported disks
-    $importSyncroModule = $false # Comment this out to enable Syncro module in test mode
-    $suppressRMMAlerts = $true # Comment this line out to enable RMM alerts in testing mode. You should also set $importSyncroModule to $true.
+# VARIABLES
+function ConvertTo-Boolean {
+    param (
+        [string]$value
+    )
+    switch ($value.ToLower()) {
+        'true' { return $true }
+        '1' { return $true }
+        't' { return $true }
+        'y' { return $true }
+        'yes' { return $true }
+        'false' { return $false }
+        '0' { return $false }
+        'f' { return $false }
+        'n' { return $false }
+        'no' { return $false }
+        default { throw "Invalid boolean string: $value" }
+    }
 }
 
-# Import the Syncro module
-if ($importSyncroModule) {
-    Import-Module $env:SyncroModule
+# Import the Syncro module, if it exists, and handle Syncro variables
+if ($null -ne $env:SyncroModule) { 
+    Import-Module $env:SyncroModule -DisableNameChecking
+    # Convert Syncro's string variables to boolean
+    $TestingMode = ConvertTo-Boolean $TestingMode
+    $SuppressRMMAlerts = ConvertTo-Boolean $SuppressRMMAlerts
+    $DebugSMART = ConvertTo-Boolean $DebugSMART
+    $DelaySmartctlInstall = ConvertTo-Boolean $DelaySmartctlInstall
+    $ForceSelfTest = ConvertTo-Boolean $ForceSelfTest
+    $ForceSmartctlInstall = ConvertTo-Boolean $ForceSmartctlInstall
+    $LogOutput = ConvertTo-Boolean $LogOutput    
 }
+# If not running in Syncro, handle variables here. You can change these as needed.
+else {
+    $TestingMode = $false # Set to $true to set values that will be sure to generate alerts, for testing purposes
+    $SuppressRMMAlerts = $false  # Included here for completeness only (no need for Syncro RMM alerts if not running in Syncro!
+    $DebugSMART = $false # Set to $true to generate verbose output of SMART info
+    $DelaySmartctlInstall = $true # Delay smartmontools install by up to 5 minutes to avoid excessive downloads when running on multiple machines. Default is $true
+    $ForceSelfTest = $false # Force a SMART self-test to run for supported disks, regardless of when the last self-test ran (i.e. ignore MaxTestInterval)
+    $ForceSmartctlInstall = $false #Force installation of Smartctl even script detects it's already installed
+    $LogOutput = $false # Log output to a file
+}
+
+# Testing thresholds
+# We don't often need to change these ad-hoc, so we don't pass these in as Syncro variables.
+$MaxTemperature = 70 # Maximum disk temperature in Celsius. Default is 70.
+$MaxPowerCycles = 4000 # How many times the drive was turned off and on. Default is 4000.
+$MaxPowerOnTime = 35063 # How many hours the drive has been on. Default is 35063 (about 4 years).
+$MaxTestInterval = 168 # Max hours between SMART tests. Default is 168 hours (1 week).
+
+# Enable logging, if requested
+if ($LogOutput -eq "true") {
+    ## Define the log directory and log file path
+    $logDirectory = "C:\!TECH\DiskScriptLogs"
+    $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+    $logFile = "$logDirectory\Check-DiskHealthLog_$timestamp.txt"
+
+    # Create the log directory if it does not exist
+    if (-not (Test-Path -Path $logDirectory -ErrorAction SilentlyContinue)) {
+        New-Item -Path $logDirectory -ItemType Directory -Force | Out-Null
+    }
+
+    # Start logging to a transcript
+    Start-Transcript -Path $logFile -Append
+    Write-Host "Logging output to: $logFile"
+}
+
+
+# Testing Mode
+if ($TestingMode) {
+    # Check if user supplied values that conflict with Testing Mode
+    if ($PSBoundParameters.ContainsKey('MaxPowerOnTime') -or $PSBoundParameters.ContainsKey('MaxTemperature')) {
+        Write-Output "NOTICE: TestingMode is set, but custom values for MaxPowerOnTime and/or MaxTemperature were provided. These values will be ignored in testing mode."
+    }
+    # Set testing mode values
+    $MaxPowerOnTime = 0
+    $MaxTemperature = 0
+}
+
+
+if ($ForceSelfTest) {
+    Write-Host "Forcing a self-test"
+    $MaxTestInterval = -1
+}
+
 
 # FUNCTION DEFINITIONS
 
@@ -117,21 +175,21 @@ function Install-Smartmontools {
         [string]$ProgramPath
     )
 
-    if ((Test-Path $ProgramPath) -and (! $testingMode)) {
+    if ((Test-Path $ProgramPath) -and (! $ForceSmartctlInstall)) {
         Write-Host "Found smartctl at $ProgramPath, using it"
     }
     else {
-        if ($testingMode) {
-            Write-Host "Running in test mode, running smartctl install regardless of current install status"
+        if ($ForceSmartctlInstall) {
+            Write-Host "ForceSmartctlInstall, running smartctl install regardless of current install status"
         }
         else {
             Write-Host "smartctl not found, installing it"
         }
 
         # Check for delay
-        if ($smartInstallDelay) {
+        if ($DelaySmartctlInstall) {
             $randomDelay = Get-Random -Maximum 300
-            if ($testingMode) {
+            if ($TestingMode) {
                 Write-Host "Testing mode detected. Skipping delay. Would have delayed $randomDelay seconds."
             }
             else {
@@ -198,7 +256,7 @@ if (Check-VM) {
 $diskErrors = @()
 
 # Detect testing mode
-if ($testingMode) {
+if ($TestingMode) {
     Write-Host "NOTICE: RUNNING IN TESTING MODE.`n"
     $diskErrors += "Script ran in test mode."
 }
@@ -330,7 +388,7 @@ foreach ($smartDisk in $smartDisks){
         }
  
         # Check for SMART debug mode and if set, print full SMART data
-        if ($debugSMART) {
+        if ($DebugSMART) {
              Print-ObjectProperties -Object $smartData
         }
  
@@ -361,7 +419,7 @@ foreach ($smartDisk in $smartDisks){
         }
         else {
             $powerCycleCount = $smartData.power_cycle_count
-            $diskHealth = Check-Threshold -Value $powerCycleCount -Threshold $maxPowerCycles -ParameterName $parameterName
+            $diskHealth = Check-Threshold -Value $powerCycleCount -Threshold $MaxPowerCycles -ParameterName $parameterName
             if (! $diskHealth) {
                 if ($ignoreDiskPowerErrors) {
                     Write-IndentedHost "A power error was detected, but `$ignoreDiskPowerErrors is set. Supressing alert."
@@ -380,7 +438,7 @@ foreach ($smartDisk in $smartDisks){
         }
         else {
             $powerOnTime = $smartData.power_on_time.hours
-            $diskHealth = Check-Threshold -Value $powerOnTime -Threshold $maxPowerOnTime -ParameterName $parameterName
+            $diskHealth = Check-Threshold -Value $powerOnTime -Threshold $MaxPowerOnTime -ParameterName $parameterName
             if (! $diskHealth) {
                 if ($ignoreDiskPowerErrors) {
                     Write-IndentedHost "A power error was detected, but `$ignoreDiskPowerErrors is set. Supressing alert."
@@ -399,7 +457,7 @@ foreach ($smartDisk in $smartDisks){
         }
         else {
             $temperature = $smartData.temperature.current
-            $diskHealth = Check-Threshold -Value $temperature -Threshold $maxTemperature -ParameterName $parameterName
+            $diskHealth = Check-Threshold -Value $temperature -Threshold $MaxTemperature -ParameterName $parameterName
             if (! $diskHealth) {
                 $diskErrors += "Disk $model has exceeded the max $parameterName."
             }
@@ -431,8 +489,8 @@ foreach ($smartDisk in $smartDisks){
                 $difference = [Math]::Abs($powerOnTime - $lastTest)
     
                 # Check if the difference is more than the max interval
-                if ($difference -gt $maxTestInterval) {
-                    Write-IndentedHost "No SMART test has run in the past $maxTestInterval hours. Starting short test now."
+                if ($difference -gt $MaxTestInterval) {
+                    Write-IndentedHost "No SMART test has run in the past $MaxTestInterval hours. Starting short test now."
                     & "$smartctlPath" -t short $name --quietmode=errorsonly
                 }
     
@@ -480,15 +538,25 @@ foreach ($smartDisk in $smartDisks){
 if ($diskErrors) {
     Write-Host "`nWARNING! WARNING! FOUND DISK(S) WITH PROBLEMS!"
     Write-Host "Errors: $diskErrors"
-    if ($suppressRMMAlerts) {
+    if ($SuppressRMMAlerts) {
         Write-Host "An RMM alert would have been generated, but `$supressRMMAlerts is set to true."
     }
     else{
-        RMM-Alert -Category "Disk Health Alert" -Body "Warning! Disk health script found problems: $diskErrors"
+        if (Get-Module | Where-Object { $_.ModuleBase -match 'Syncro' }) {
+            RMM-Alert -Category "Disk Health Alert" -Body "Warning! Disk health script found problems: $diskErrors"
+        }
+        else {
+            Write-Host "Syncro module not found, no RMM alert can be created"
+        }
     }
+}
+
+if ($LogOutput -eq "true") {
+    Stop-Transcript
 }
 
 #Fix bug with script exiting incorrectly
 if ($LASTEXITCODE -eq 0) {
     exit 0
 }
+
