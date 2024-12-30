@@ -292,7 +292,7 @@ foreach ($disk in $disks) {
     
     foreach ($reliabilityError in $reliabilityErrors) {        
         if ($reliabilityError.Value -gt 0) {
-            $hasErrors = $true
+            $hasReliabilityErrors = $true
             Write-IndentedHost "Disk $($disk.FriendlyName) has $($reliabilityError.Name): $($reliabilityError.Value)"
             $diskErrors += "Disk $($disk.FriendlyName) has $($reliabilityError.Name): $($reliabilityError.Value)"
         }
