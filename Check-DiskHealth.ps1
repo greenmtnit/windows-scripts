@@ -553,10 +553,14 @@ if ($diskErrors) {
 
 if ($LogOutput -eq "true") {
     Stop-Transcript
+    # If running in Syncro, upload the file to the Syncro asset page
+    if ($null -ne $env:SyncroModule) {
+        Write-Host "Uploading log file to Syncro asset page"
+        Upload-File -FilePath $logFile
+    }
 }
 
 #Fix bug with script exiting incorrectly
 if ($LASTEXITCODE -eq 0) {
     exit 0
 }
-
