@@ -398,6 +398,7 @@ foreach ($smartDisk in $smartDisks){
         # Check basic SMART status
         $smartStatus = $smartData.smart_status.passed
         if (! $smartStatus) {
+            
             Write-IndentedHost "WARNING! SMART STATUS FAILED!"
             $diskErrors += "SMART status failed for $name"
             $diskHealth = $false
