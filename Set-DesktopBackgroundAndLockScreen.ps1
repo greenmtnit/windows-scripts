@@ -2,13 +2,10 @@
 # TODO - Sloppy Notes
 # ==================================
 <#
- - Add syncro var for client name
- - Update documentation at top of script
- - Add docs about updating file, name of picture file
- - Add GitHub link https://github.com/KelvinTegelaar/RunAsUser
- - Documentation
- - Read only polciy example
- - Date check
+ - Add better documentation in script itself
+ - Note how to revert the script (remove reg keys, remove RunOnce, etc)
+ - Add docs about updating file, name of picture file, adding Syncro platform var, uploading file, etc.
+ - Explain date check and other vars
  - Add Syncro documentaiton
  - Document methods: looping, ntuser default, RunOnce script for users
 #>
@@ -58,14 +55,13 @@ function ConvertTo-Boolean {
 # Variable Definitions
 # ==================================
 
-$bucketName = "client-backgrounds" # Wasabi bucket name
+$bucketName = "client-backgrounds" # S3 bucket name
 $s3Endpoint = "s3.wasabisys.com"
 $s3Provider = "Wasabi" # S3 Provider Name, as seen in rclone config. Case Sensitive! See here: https://rclone.org/s3/
-# REMOVEME
-$s3AccessKey = "CHANGEME"
-$s3SecretKey = "CHANGEME"
 $startDate = "2025-01-15" # works with $DateCheck - if you only want settings to apply for installs after a certain date.
 
+#$s3AccessKey = "YOURACCESSKEYHERE"
+#$s3SecretKey = "YOURSECRETKEYHERE"
 
 # Syncro Variables
 # Some variables are passed in from Syncro, or, if not running in Syncro, you can assign them in the else block below.
@@ -82,20 +78,25 @@ if ($null -ne $env:SyncroModule) {
 
 # If not running in Syncro, handle variables here. You can change these as needed.
 else {
-    $DateCheck = $true # Set to false to force to run
+    $DateCheck = $false # Set to false to force to run
     $Verbose = $true  # Set this to $false to suppress messages
-    $clientAbbreviation = "abc" # Will override with Syncro varialbe if running in Syncro
-    $ChangeExistingUsers = "$false" # Change desktop background for users who have already logged onto the machine 
+    $BackgroundImageFile = "gmits.png" # This is the filename in the S3 bucket. Will override with Syncro varialbe if running in Syncro
+    $ChangeExistingUsers = $true # Change desktop background for users who have already logged onto the machine 
 }
 
 # ==================================
-# Initial Date Check
+# Initial Checks
 # ==================================
+if (-not ($BackgroundImageFile)) {
+    Write-Error "Background image file platform var is not set! Exiting."
+    exit 0
+}
+
 if ($DateCheck) {
     $installDate = (Get-ChildItem C:/ -Hidden | Where-Object { $_.Name -like "System Volume Information" }).CreationTime
     $targetDate = Get-Date $startDate
     if ($installDate -le $targetDate) {
-        Write-VerboseMessage "Machine was installed before start date. Exiting"
+        Write-Error "Machine was installed before start date. Exiting"
         exit 0
     }
     else {
@@ -107,56 +108,69 @@ if ($DateCheck) {
 # Setup
 # ==================================
 
-# Create working directory
-$workingDirectory = "C:\Program Files\Green Mountain IT Solutions\RMM\Tools"
-if (-not (Get-Item $workingDirectory -ErrorAction SilentlyContinue)) {
-    Write-VerboseMessage -Message "Working directory $workingDirectory not found; creating it."
-    New-Item -ItemType Directory $workingDirectory | Out-Null
+# Create working directories
+$baseDirectory = "C:\Program Files\Green Mountain IT Solutions"
+$scriptsDirectory = Join-Path -Path $baseDirectory -ChildPath "Scripts"
+$workingDirectory = Join-Path -Path $baseDirectory -ChildPath "RMM"
+$toolsDirectory = Join-Path -Path $workingDirectory -ChildPath "Tools"
+
+$directories = @($baseDirectory, $scriptsDirectory, $workingDirectory, $toolsDirectory)
+
+foreach ($dir in $directories) {
+    if (-not (Test-Path -Path $dir -PathType Container)) {
+        New-Item -Path $dir -ItemType Directory -Force | Out-Null
+        Write-VerboseMessage -Message "Created directory: $dir"
+    }
+    else {
+        Write-VerboseMessage -Message "Directory already exists: $dir"
+    }
 }
-else {
-    Write-VerboseMessage "Found working directory $workingDirectory; using it"
-}
 
 
+# Download rclone executable. rclone will be used to download from S3
 
-# Download rclone executable. Will be used to download from S3
 $rcloneURL = "https://downloads.rclone.org/rclone-current-windows-amd64.zip"
-$rcloneDownloadPath = Join-Path -Path $workingDirectory -ChildPath "rclone-current-windows-amd64.zip"
-if (-not (Get-Item $rcloneDownloadPath -ErrorAction SilentlyContinue)) {
-    $ProgressPreference = "SilentlyContinue"
-    Write-VerboseMessage -Message "Downloading to $rcloneDownloadPath"
-    Invoke-WebRequest -Uri $rcloneURL -OutFile $rcloneDownloadPath
-}
-else {
-    Write-VerboseMessage "Found $rcloneDownloadPath already exists; skipping download"
-}
+$rcloneDownloadPath = Join-Path -Path $toolsDirectory -ChildPath "rclone-current-windows-amd64.zip"
 
-Write-VerboseMessage "Extracting archive to $workingDirectory"
-Expand-Archive -Path $rcloneDownloadPath -DestinationPath $workingDirectory -Force
-
-# Find rclone executable
-# Search for the rclone.exe file in child folders starting with "rclone"
-$rclone = Get-ChildItem -Path $workingDirectory -Recurse -Filter "rclone.exe" |
+# Check if rclone executable already exists
+$rclone = Get-ChildItem -Path $toolsDirectory -Recurse -Filter "rclone.exe" |
           Where-Object { $_.DirectoryName -like "*\rclone*" } |
           Select-Object -ExpandProperty FullName -First 1
 
-# Output the result
 if ($rclone) {
-    Write-VerboseMessage -Message "rclone.exe found at: $rclone"
-} else {
-    Write-Error "rclone.exe not found."
-    exit 1
+    Write-VerboseMessage -Message "Found rclone at $rclone, skipping download"
+}
+else {
+    # Download rclone executable if not found
+    if (-not (Get-Item $rcloneDownloadPath -ErrorAction SilentlyContinue)) {
+        $ProgressPreference = "SilentlyContinue"
+        Write-VerboseMessage -Message "Downloading rclone"
+        Write-VerboseMessage -Message "Downloading to $rcloneDownloadPath"
+        Invoke-WebRequest -Uri $rcloneURL -OutFile $rcloneDownloadPath
+    } else {
+        Write-VerboseMessage "Found $rcloneDownloadPath already exists; skipping download"
+    }
+
+    Write-VerboseMessage "Extracting archive to $toolsDirectory"
+    Expand-Archive -Path $rcloneDownloadPath -DestinationPath $toolsDirectory -Force
+
+    # Find rclone executable again after extraction
+    $rclone = Get-ChildItem -Path $toolsDirectory -Recurse -Filter "rclone.exe" |
+              Where-Object { $_.DirectoryName -like "*\rclone*" } |
+              Select-Object -ExpandProperty FullName -First 1
+
+    Write-VerboseMessage -Message "rclone is now available at $rclone"
 }
 
 # Install the RunAsUserModule
 
 # Check if already installed 
 if (Get-Module -Name RunAsUser -ListAvailable) {
-    Write-VerboseMessage "Module is already installed."
+    Write-VerboseMessage "RunAsUser Module is already installed; skipping install"
 }
 else {
     $moduleURL = "https://github.com/KelvinTegelaar/RunAsUser/archive/refs/heads/master.zip"
-    $moduleDownloadPath = Join-Path -Path $workingDirectory -ChildPath "RunAsUser.zip"
+    $moduleDownloadPath = Join-Path -Path $toolsDirectory -ChildPath "RunAsUser.zip"
 
     if (-not (Test-Path $moduleDownloadPath)) {
         $ProgressPreference = "SilentlyContinue"
@@ -168,14 +182,14 @@ else {
     }
 
     # Unzip
-    Write-VerboseMessage "Extracting archive to $workingDirectory"
-    Expand-Archive -Path $moduleDownloadPath -DestinationPath $workingDirectory -Force
+    Write-VerboseMessage "Extracting archive to $toolsDirectory"
+    Expand-Archive -Path $moduleDownloadPath -DestinationPath $toolsDirectory -Force
 
     # Import the Module (Manual copy)
     $modulesPath = "C:\Program Files\WindowsPowerShell\Modules"
 
     Write-VerboseMessage -Message "Manually copying module to $modulesPath and importing it."
-    Copy-Item -Path "$workingDirectory\RunAsUser-master" -Destination $modulesPath\RunAsUser -Recurse -Force
+    Copy-Item -Path "$toolsDirectory\RunAsUser-master" -Destination $modulesPath\RunAsUser -Recurse -Force
 }
 Import-Module -Name "RunAsUser"
 
@@ -187,8 +201,6 @@ Import-Module -Name "RunAsUser"
 # Use rclone to download the image
 # ==================================
 
-# Convert client abbreviation to lowercase, so we can find the filename
-$clientAbbreviation = $clientAbbreviation.ToLower()
 $imagePath = "$env:Public\Pictures\background.png"
 
 # Rename file if already exists
@@ -202,24 +214,19 @@ if (Get-Item $imagePath -ErrorAction SilentlyContinue) {
 # rclone - we are using the :backend:path/to/dir syntax to create a remote on the fly. See https://rclone.org/docs/#backend-path-to-dir
 $rcloneArgs = @(
     "copyto"
-    ":s3:$bucketName/$clientAbbreviation.png"
+    ":s3:$bucketName/$BackgroundImageFile"
     "$imagePath"
-    "--s3-access-key-id $s3AccessKey"
-    "--s3-secret-access-key $s3SecretKey"
-    "--s3-endpoint $s3Endpoint"
-    "--s3-provider $s3Provider"
+    "--s3-access-key-id", $s3AccessKey
+    "--s3-secret-access-key", $s3SecretKey
+    "--s3-endpoint", $s3Endpoint
+    "--s3-provider", $s3Provider
 )
+
 
 # Execute the rclone command
 Write-VerboseMessage "Executing command: $rclone $rcloneArgs"
-try {
-    Start-Process -FilePath $rclone -ArgumentList $rcloneArgs -NoNewWindow -Wait
-    Write-VerboseMessage -Message "Successfully downloaded file to $imagePath"
-}
-catch {
-    # Print error message
-    Write-Error "An error occurred running rclone download!"
-}
+& $rclone $rcloneArgs
+
 
 # ==================================================================
 # Set Lock Screen. This applies for all users and can't be changed. 
@@ -242,14 +249,6 @@ New-ItemProperty -Path $RegKeyPath -Name "LockScreenImageUrl" -Value $imagePath 
 # =====================================================================================
 
 # Create the script. We will use RunOnce to make each new user run the script
-$scriptDirectory = "C:\Program Files\Green Mountain IT Solutions\Scripts"
-if (-not (Get-Item $scriptDirectory -ErrorAction SilentlyContinue)) {
-    Write-VerboseMessage -Message "Working directory $scriptDirectory not found; creating it."
-    New-Item -ItemType Directory $scriptDirectory | Out-Null
-}
-else {
-    Write-VerboseMessage "Found working directory $scriptDirectory; using it"
-}
 
 $scriptContent = @'
 $blockImagePath = "$env:Public\Pictures\background.png"
@@ -271,7 +270,7 @@ Add-Type $code
 [Win32.Wallpaper]::SetWallpaper($blockImagePath)
 '@
 
-$scriptPath = Join-Path -Path $scriptDirectory -ChildPath "Set-DesktopBackground.ps1"
+$scriptPath = Join-Path -Path $scriptsDirectory -ChildPath "Set-DesktopBackground.ps1"
 
 # Add content to the script
 Set-Content -Path $scriptPath -Value $scriptContent
@@ -292,7 +291,7 @@ $regPath = "HKLM:\TempDefaultUser\Software\Microsoft\Windows\CurrentVersion\RunO
 
 $runOnceCommand = "powershell.exe -ExecutionPolicy Bypass -File `"$scriptPath`""
 
-New-ItemProperty -Path $regPath -Name "FirstLogonDesktopBackground" -Value $runOnceCommand -PropertyType String -Force
+New-ItemProperty -Path $regPath -Name "FirstLogonDesktopBackground" -Value $runOnceCommand -PropertyType String -Force | Out-Null
 
 # Unload keys
 [gc]::Collect()
@@ -343,6 +342,16 @@ if ($ChangeExistingUsers) {
 
         #####################################################################
         # This is where you can read/modify each user's portion of the registry 
+
+        # Backup current values before changing
+        $currentWallpaperStyle = (Get-ItemProperty -Path $regPath -Name WallpaperStyle -ErrorAction SilentlyContinue).WallpaperStyle
+        $currentTileWallpaper = (Get-ItemProperty -Path $regPath -Name TileWallpaper -ErrorAction SilentlyContinue).TileWallpaper
+        $currentWallpaper = (Get-ItemProperty -Path $regPath -Name Wallpaper -ErrorAction SilentlyContinue).Wallpaper
+
+        $timeStamp = Get-Date -Format yyyyMMdd_HHmmss
+        $backupPath = "${imagePath}_${timeStamp}.bak"
+        $backupPath = "C:\!TECH\personalization_settings_backup_$($Item.SID).txt"
+        "WallpaperStyle: $currentWallpaperStyle`nTileWallpaper: $currentTileWallpaper`nWallpaper: $currentWallpaper" | Out-File -FilePath $backupPath
         
         # Define the values to set
         $wallpaperStyle = 10
