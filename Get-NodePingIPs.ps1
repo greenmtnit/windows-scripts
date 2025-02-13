@@ -13,3 +13,15 @@ $ips | Out-File -FilePath $outputFilePath -Encoding UTF8
 
 # Output a message indicating that the process is complete
 Write-Host "IP addresses have been extracted and saved to $outputFilePath"
+
+$answer = Read-Host "View the file now? [y/n]"
+
+while ($answer -ne 'y' -and $answer -ne 'y') {
+    $answer = Read-Host 'Please enter [y/n]'
+}
+
+if ($answer -eq 'y') {
+    Invoke-Item -Path $outputFilePath
+} elseif ($answer -eq 'n') {
+    exit
+}
