@@ -1,10 +1,20 @@
+<#
+# ===========================================
+#  How to Add Client Image Files (GMITS)
+# ===========================================    
+- Create desktop background file:
+    - PNG file
+    - 1920 x 1080 or another 16:9 ratio reccomended
+    - If the file is bigger than a few MB, compress the file: compresspng.com
+    - Name file [client_name].png, e.g. evalco.PNG
+- Upload to our Wasabi bucket 'client-backgrounds'
+- Add the filename to the Syncro Customer Custom Field called 'BackgroundImageFile', e.g. evalco.png
+
 # ==================================
 # TODO - Sloppy Notes
 # ==================================
-<#
  - Add better documentation in script itself
  - Note how to revert the script (remove reg keys, remove RunOnce, etc)
- - Add docs about updating file, name of picture file, adding Syncro platform var, uploading file, etc.
  - Explain date check and other vars
  - Add Syncro documentaiton
  - Document methods: looping, ntuser default, RunOnce script for users
