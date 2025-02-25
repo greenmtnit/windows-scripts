@@ -359,8 +359,7 @@ if ($ChangeExistingUsers) {
         $currentWallpaper = (Get-ItemProperty -Path $regPath -Name Wallpaper -ErrorAction SilentlyContinue).Wallpaper
 
         $timeStamp = Get-Date -Format yyyyMMdd_HHmmss
-        $backupPath = "${imagePath}_${timeStamp}.bak"
-        $backupPath = "C:\!TECH\personalization_settings_backup_$($Item.SID).txt"
+        $backupPath = Join-Path -Path $scriptsDirectory -ChildPath "personalization_settings_backup_$($Item.SID).txt"
         "WallpaperStyle: $currentWallpaperStyle`nTileWallpaper: $currentTileWallpaper`nWallpaper: $currentWallpaper" | Out-File -FilePath $backupPath
         
         # Define the values to set
