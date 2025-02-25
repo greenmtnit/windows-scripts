@@ -222,8 +222,10 @@ if (Get-Item $imagePath -ErrorAction SilentlyContinue) {
 }
 
 # rclone - we are using the :backend:path/to/dir syntax to create a remote on the fly. See https://rclone.org/docs/#backend-path-to-dir
+# we are passing a blank --config "" option to avoid an error about no config file
 $rcloneArgs = @(
     "copyto"
+    "--config `"`""
     ":s3:$bucketName/$BackgroundImageFile"
     "$imagePath"
     "--s3-access-key-id", $s3AccessKey
@@ -299,12 +301,20 @@ reg load $tempKeyName $ntuserDatPath
 # Define the registry path
 $regPath = "HKLM:\TempDefaultUser\Software\Microsoft\Windows\CurrentVersion\RunOnce"
 
+# Source for cleanup of reg actions: https://stackoverflow.com/questions/46509349/powershell-registry-hive-unload-error
+if (-not (Test-Path $regPath)) {
+    Write-VerboseMessage "Reg path $regPath not found; creating it."
+    $result = New-Item -Path $regPath -Force
+    $result.Handle.Close()
+}
+
 $runOnceCommand = "powershell.exe -ExecutionPolicy Bypass -File `"$scriptPath`""
 
 New-ItemProperty -Path $regPath -Name "FirstLogonDesktopBackground" -Value $runOnceCommand -PropertyType String -Force | Out-Null
 
 # Unload keys
 [gc]::Collect()
+[gc]::WaitForPendingFinalizers()
 reg unload $tempKeyName
 
 
