@@ -238,13 +238,13 @@ if (Get-Item $imagePath -ErrorAction SilentlyContinue) {
 # rclone - we are using the :backend:path/to/dir syntax to create a remote on the fly. See https://rclone.org/docs/#backend-path-to-dir
 # we are passing a blank --config "" option to avoid an error about no config file
 $rcloneArgs = @(
-    "copyto"
-    "--config `"`""
-    ":s3:$bucketName/$BackgroundImageFile"
-    "$imagePath"
-    "--s3-access-key-id", $s3AccessKey
-    "--s3-secret-access-key", $s3SecretKey
-    "--s3-endpoint", $s3Endpoint
+    "copyto",
+    "--config", '""', # Pass the blank --config flag
+    ":s3:$bucketName/$BackgroundImageFile",
+    "$ImagePath",
+    "--s3-access-key-id", $s3AccessKey,
+    "--s3-secret-access-key", $s3SecretKey,
+    "--s3-endpoint", $s3Endpoint,
     "--s3-provider", $s3Provider
 )
 
