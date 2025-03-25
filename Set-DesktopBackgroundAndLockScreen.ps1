@@ -68,7 +68,6 @@ function ConvertTo-Boolean {
 $bucketName = "client-backgrounds" # S3 bucket name
 $s3Endpoint = "s3.wasabisys.com"
 $s3Provider = "Wasabi" # S3 Provider Name, as seen in rclone config. Case Sensitive! See here: https://rclone.org/s3/
-$startDate = "2025-01-15" # works with $DateCheck - if you only want settings to apply for installs after a certain date.
 
 #$s3AccessKey = "YOURACCESSKEYHERE"
 #$s3SecretKey = "YOURSECRETKEYHERE"
