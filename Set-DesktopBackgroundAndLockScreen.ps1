@@ -88,7 +88,8 @@ if ($null -ne $env:SyncroModule) {
 
 # If not running in Syncro, handle variables here. You can change these as needed.
 else {
-    $DateCheck = $false # Set to false to force to run
+    $DateCheck = $true # Set to true to only run on new installs, less than $thresholdDays old
+    $ThresholdDays = 14 # Less than this many days old is considered a new install by $DateCheck
     $Verbose = $true  # Set this to $false to suppress messages
     $BackgroundImageFile = "gmits.png" # This is the filename in the S3 bucket. Will override with Syncro varialbe if running in Syncro
     $ChangeExistingUsers = $true # Change desktop background for users who have already logged onto the machine 
@@ -102,18 +103,32 @@ if (-not ($BackgroundImageFile)) {
     exit 0
 }
 
-if ($DateCheck) {
+if (! $DateCheck) { # Skip date check
+    Write-VerboseMessage "Date check disabled. Proceeding without checking install age."
+}
+
+else {
+    # Check for date
     $installDate = (Get-ChildItem C:/ -Hidden | Where-Object { $_.Name -like "System Volume Information" }).CreationTime
-    $targetDate = Get-Date $startDate
-    if ($installDate -le $targetDate) {
-        Write-Error "Machine was installed before start date. Exiting"
+    
+    #Define default ThresholdDays
+    if (! $ThresholdDays) {
+        Write-VerboseMessage "`$ThresholdDays is not set. Using default value."
+        $ThresholdDays = 14
+    }
+    
+    # calculate cutoff date
+    $cutoffDate = (Get-Date).AddDays(-$ThresholdDays)
+
+    if ($installDate -lt $cutoffDate) {
+        Write-VerboseMessage "This does not appear to be a new install. Exiting!"
         exit 0
     }
     else {
-        Write-VerboseMessage "Machine is newer than start date. Proceeding!"
+        Write-VerboseMessage "This appears to be a new install. Proceeding!"
     }
 }
-
+    
 # ==================================
 # Setup
 # ==================================
