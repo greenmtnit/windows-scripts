@@ -147,6 +147,13 @@ $toolsDirectory = Join-Path -Path $workingDirectory -ChildPath "Tools"
 #  MAIN SCRIPT ACTION
 # ===========================================  
 
+## Do not run on servers!
+$osInfo = Get-CimInstance -ClassName Win32_OperatingSystem
+if ($osInfo.ProductType -ne 1) {
+    Write-Host "This is a server. We should not be automatically rebooting or running reminders on servers. EXITING"
+    exit 0
+}
+
 ## Check if running in Syncro
 if ($null -ne $env:SyncroModule) {
     Import-Module $env:SyncroModule
@@ -166,16 +173,9 @@ if ((Get-ItemProperty -Path 'HKLM:\SOFTWARE\Green Mountain IT Solutions\RMM\Rebo
 $logonStatus = Get-LocalLogonStatus
 
 if ($logonStatus -eq "NoUser") { # 
-    $osInfo = Get-CimInstance -ClassName Win32_OperatingSystem
-    if ($osInfo.ProductType -ne 1) {
-        Write-Host "This is a server. We should not be automatically rebooting or running reminders on servers. EXITING"
-        exit 0
-    }
-    else {
-        Write-Host "No user is logged in. Rebooting now!"
-        Restart-Computer -Force
-        exit 0
-    }
+    Write-Host "No user is logged in. Rebooting now!"
+    Restart-Computer -Force
+    exit 0
 }
 
 <#
