@@ -130,6 +130,12 @@ $toolsDirectory = Join-Path -Path $workingDirectory -ChildPath "Tools"
 #  MAIN SCRIPT ACTION
 # ===========================================  
 
+## Check if running in Syncro
+if ($null -ne $env:SyncroModule) {
+    Import-Module $env:SyncroModule
+    $Syncro = $true
+}
+
 # Check if RebootNeeded Key/Value exists
 if ((Get-ItemProperty -Path 'HKLM:\SOFTWARE\Green Mountain IT Solutions\RMM\RebootNeeded' -Name 'RebootNeeded' -ErrorAction SilentlyContinue).RebootNeeded -eq 1) {
     Write-Host "Found RebootNeeded reg key. Reboot required. Proceeding!"
@@ -216,7 +222,7 @@ $scriptBlock = {
 # The script block can't access function and variable definitions in the main scope.
 # There are clever ways to get around this, but we'll just duplicate the definitions.
 
-function Set-VolatileRegKey {
+function Set-VolatileRegKeyNonAdmin {
     <#
         .SYNOPSIS
         Adds or updates a value in a volatile registry key.
@@ -242,7 +248,7 @@ function Set-VolatileRegKey {
         The data to be stored in the value (integer).
 
         .EXAMPLE
-        Set-VolatileRegKey -BaseKeyPath 'SOFTWARE\Green Mountain IT Solutions' -SubKeyPath 'RMM' -VolatileKeyName 'RebootNeeded' -ValueName 'SnoozesRemaining' -ValueData 5
+        Set-VolatileRegKeyNonAdmin -BaseKeyPath 'SOFTWARE\Green Mountain IT Solutions' -SubKeyPath 'RMM' -VolatileKeyName 'RebootNeeded' -ValueName 'SnoozesRemaining' -ValueData 5
 
         Adds or updates the value `SnoozesRemaining` under `HKLM:\SOFTWARE\Green Mountain IT Solutions\RMM\RebootNeeded` 
         with data `5`. The `RebootNeeded` key will be volatile and cleared after a reboot.
@@ -272,10 +278,10 @@ function Set-VolatileRegKey {
         $hklm = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine, [Microsoft.Win32.RegistryView]::Default)
 
         # Open or create the base key
-        $baseKey = $hklm.CreateSubKey($BaseKeyPath, [Microsoft.Win32.RegistryKeyPermissionCheck]::ReadWriteSubTree)
+        $baseKey = $hklm.OpenSubKey($BaseKeyPath)
 
         # Open or create the subkey
-        $subKey = $baseKey.CreateSubKey($SubKeyPath, [Microsoft.Win32.RegistryKeyPermissionCheck]::ReadWriteSubTree)
+        $subKey = $baseKey.OpenSubKey($SubKeyPath)
 
         # Check if the volatile key already exists
         $volatileKey = $subKey.OpenSubKey($VolatileKeyName, $true)
@@ -410,9 +416,7 @@ else { # There are still snoozes remaining. Show window.
                 shutdown /r /t 60  # Restart the system with a 60-second delay
                 $Window.Close()
             }
-            else {
-                $Window.Close()
-            }
+            
     })
 
     # Event Handler for Snooze Button
@@ -420,18 +424,19 @@ else { # There are still snoozes remaining. Show window.
         if ($CurrentSnoozeValue -eq $null) { # Don't do if (! $CurrentSnoozeValue) - we need to handle 0 separately! elseif ($CurrentSnoozeValue -eq 0)
             # If the value does not exist, set it to the default ($MaxSnoozes)
             Write-Output "The registry value '$ValueName' does not exist. Creating it with default value: $MaxSnoozes."
-            Set-VolatileRegKey -BaseKeyPath $BaseKeyPath -SubKeyPath $SubKeyPath -VolatileKeyName $VolatileKeyName -ValueName $ValueName -ValueData $MaxSnoozes
+            Set-VolatileRegKeyNonAdmin -BaseKeyPath $BaseKeyPath -SubKeyPath $SubKeyPath -VolatileKeyName $VolatileKeyName -ValueName $ValueName -ValueData $MaxSnoozes
+            # Now set $CurrentSnoozeValue to $MaxSnoozes
+            $CurrentSnoozeValue = $MaxSnoozes
         }
-         
-        else {
-            # Decrease the value by 1, ensuring it doesn't go below 0
-            $newValue = [math]::Max(0, $CurrentSnoozeValue - 1)
+          
+        # Decrease the value by 1, ensuring it doesn't go below 0
+        $newValue = [math]::Max(0, $CurrentSnoozeValue - 1)
 
-            # Update the registry value with the new value
-            Set-VolatileRegKey -BaseKeyPath $BaseKeyPath -SubKeyPath $SubKeyPath -VolatileKeyName $VolatileKeyName -ValueName $ValueName -ValueData $newValue
+        # Update the registry value with the new value
+        Set-VolatileRegKeyNonAdmin -BaseKeyPath $BaseKeyPath -SubKeyPath $SubKeyPath -VolatileKeyName $VolatileKeyName -ValueName $ValueName -ValueData $newValue
 
-            Write-Output "The registry value '$ValueName' was updated. New value: $newValue."
-        }
+        Write-Output "The registry value '$ValueName' was updated. New value: $newValue."
+
         # Close the window
         $Window.Close()
     })
