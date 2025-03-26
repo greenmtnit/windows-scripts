@@ -1,23 +1,40 @@
 #######################
-# TODO - sloppy notes
+# TODO
 #######################
 
 <#
 - Add uptime checks
     - Reboot instantly if uptime is too long (not servers, though)
     - Throw RMM alert for really long uptime
-    - Don't run reboot / snoze login on servers - only do uptime check
-- Avoid duplicte definiton of vars and functions in script block
-- Reboot if no user is logged in
+    - Don't run reboot / snooze login on servers - only do uptime check
+- Avoid duplicate definiton of vars and functions in script block
 - Add Write-VerboseOutput function to show output
-- Add Syncro broadcast messages for when alerts are shown and user snoozed
 - add better documentation, esp. how other scripts will set key
-- Make sure volatile key dissappears!
+- how to change colors
 #>
 
 # ===========================================
 #  FUNCTIONS
 # ===========================================  
+# Function to determine if a user is logged in and screen is locked on the local machine
+function Get-LocalLogonStatus {
+    # Get the currently logged-in user
+    $user = Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty UserName
+
+    # Check if LogonUI.exe (lock screen process) is running
+    $isLocked = Get-Process | Where-Object { $_.ProcessName -eq "LogonUI" }
+
+    if ($user) {
+        if ($isLocked) {
+            return "Locked"
+        } else {
+            return "Unlocked"
+        }
+    } else {
+        return "NoUser"
+    }
+}
+
 function Set-VolatileRegKey {
     <#
         .SYNOPSIS
@@ -133,8 +150,9 @@ $toolsDirectory = Join-Path -Path $workingDirectory -ChildPath "Tools"
 ## Check if running in Syncro
 if ($null -ne $env:SyncroModule) {
     Import-Module $env:SyncroModule
-    $Syncro = $true
+    $syncro = $true
 }
+
 
 # Check if RebootNeeded Key/Value exists
 if ((Get-ItemProperty -Path 'HKLM:\SOFTWARE\Green Mountain IT Solutions\RMM\RebootNeeded' -Name 'RebootNeeded' -ErrorAction SilentlyContinue).RebootNeeded -eq 1) {
@@ -143,6 +161,58 @@ if ((Get-ItemProperty -Path 'HKLM:\SOFTWARE\Green Mountain IT Solutions\RMM\Rebo
     Write-Host "The registry value 'RebootNeeded' is not set to 1 or does not exist. No reboot needed."
     exit 0
 }
+
+# Check if a user is currently logged on
+$logonStatus = Get-LocalLogonStatus
+
+if ($logonStatus -eq "NoUser") { # 
+    $osInfo = Get-CimInstance -ClassName Win32_OperatingSystem
+    if ($osInfo.ProductType -ne 1) {
+        Write-Host "This is a server. We should not be automatically rebooting or running reminders on servers. EXITING"
+        exit 0
+    }
+    else {
+        Write-Host "No user is logged in. Rebooting now!"
+        Restart-Computer -Force
+        exit 0
+    }
+}
+
+<#
+# Check and set registry key so we don't run multiple times in a day
+# This is probably not necessary so I'm commenting it out
+# We can use RMM to just run once a day and queue for offline devices
+
+$markerKeyPath = "HKLM:\SOFTWARE\Green Mountain IT Solutions\RMM\Scripts"
+$registryValueName = "RebootReminderLastRunDate"
+
+if (-not (Test-Path $markerKeyPath)) {
+    New-Item -Path $markerKeyPath -Force | Out-Null
+}
+
+try {
+    $lastRunDate = Get-ItemProperty -Path $markerKeyPath -Name $registryValueName -ErrorAction Stop
+    $registryDate = Get-Date $lastRunDate.$registryValueName
+} catch [System.Management.Automation.PSArgumentException] {
+    # Value doesn't exist
+    $lastRunDate = $null
+}
+
+$todayDate = Get-Date
+if (-not $lastRunDate) {
+    # Create new value with today's date
+    New-ItemProperty -Path $markerKeyPath -Name $registryValueName -Value $todayDate.ToString("yyyy-MM-dd") -PropertyType String -Force
+} else {
+    # Compare dates (format yyyy-MM-dd for reliable comparison)
+    if ($registryDate.Date -eq $todayDate.Date) {
+        Write-Host "Script already ran today. Exiting."
+        exit 0
+    } else {
+        # Update with new date
+        Set-ItemProperty -Path $markerKeyPath -Name $registryValueName -Value $todayDate.ToString("yyyy-MM-dd")
+    }
+}
+#>
 
 ## Fix registry permissions to allow non-admin users to edit the volatile registry key 
 
@@ -170,10 +240,10 @@ $directories = @($baseDirectory, $scriptsDirectory, $workingDirectory, $toolsDir
 foreach ($dir in $directories) {
     if (-not (Test-Path -Path $dir -PathType Container)) {
         New-Item -Path $dir -ItemType Directory -Force | Out-Null
-        Write-Host -Message "Created directory: $dir"
+        #Write-Host -Message "Created directory: $dir"
     }
     else {
-        Write-Host -Message "Directory already exists: $dir"
+        #Write-Host -Message "Directory already exists: $dir"
     }
 }
 
@@ -189,21 +259,21 @@ else {
 
     if (-not (Test-Path $moduleDownloadPath)) {
         $ProgressPreference = "SilentlyContinue"
-        Write-Host -Message "Downloading to $moduleDownloadPath"
+        #Write-Host -Message "Downloading to $moduleDownloadPath"
         Invoke-WebRequest -Uri $moduleURL -OutFile $moduleDownloadPath
     }
     else {
-        Write-Host "Found $moduleDownloadPath already exists; skipping download"
+        #Write-Host "Found $moduleDownloadPath already exists; skipping download"
     }
 
     # Unzip
-    Write-Host "Extracting archive to $toolsDirectory"
+    #Write-Host "Extracting archive to $toolsDirectory"
     Expand-Archive -Path $moduleDownloadPath -DestinationPath $toolsDirectory -Force
 
     # Import the Module (Manual copy)
     $modulesPath = "C:\Program Files\WindowsPowerShell\Modules"
 
-    Write-Host -Message "Manually copying module to $modulesPath and importing it."
+    #Write-Host -Message "Manually copying module to $modulesPath and importing it."
     Copy-Item -Path "$toolsDirectory\RunAsUser-master" -Destination $modulesPath\RunAsUser -Recurse -Force
 }
 Import-Module -Name "RunAsUser"   
@@ -436,7 +506,9 @@ else { # There are still snoozes remaining. Show window.
         Set-VolatileRegKeyNonAdmin -BaseKeyPath $BaseKeyPath -SubKeyPath $SubKeyPath -VolatileKeyName $VolatileKeyName -ValueName $ValueName -ValueData $newValue
 
         Write-Output "The registry value '$ValueName' was updated. New value: $newValue."
-
+        
+        # Log Activity in Syncro
+        
         # Close the window
         $Window.Close()
     })
@@ -449,6 +521,11 @@ else { # There are still snoozes remaining. Show window.
 #End of $scriptBlock
 ################################################
 
+# Log Activity to Syncro
+if ($syncro) {
+    Log-Activity -Message "Reboot reminder was sent." -EventName "Reboot reminder."
+}
 
 # Run the script block with RunAsUser
-Invoke-AsCurrentUser -ScriptBlock $scriptblock
+Invoke-AsCurrentUser -ScriptBlock $scriptblock -NoWait
+
