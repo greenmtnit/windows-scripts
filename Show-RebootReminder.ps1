@@ -9,8 +9,9 @@
     - Don't run reboot / snooze login on servers - only do uptime check
 - Avoid duplicate definiton of vars and functions in script block
 - Add Write-VerboseOutput function to show output
-- add better documentation, esp. how other scripts will set key
+- Add better documentation, esp. how other scripts will set key - see here https://github.com/greenmtnit/windows-scripts/blob/main/Create-RebootNeededKey.ps1
 - how to change colors
+- FIX BUG where GUI window shows blank on some systems. Seems to be specific to Windows 10 with outdated Intel drivers. See https://stackoverflow.com/questions/32003868/blank-wpf-child-windows-on-windows-10
 #>
 
 # ===========================================
