@@ -46,3 +46,8 @@ I prefer to use this install command:
 I use a simple file detection rule to detect the existence of the file:
 
 `\Program Files (x86)\Egnyte Connect\EgnyteClient.exe`
+
+# Troubleshooting
+Log Files
+- C:\Windows\Temp\egnyte_deployment\ directory (with -LogOutput and -Verbose flags on Deploy-Egnyte.ps1)
+- C:\Users\<user>\AppData\Local\Egnyte Connect\logs\mass_deployment.log
