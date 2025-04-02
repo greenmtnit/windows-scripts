@@ -1,0 +1,23 @@
+{
+    "CanAddNewDrive": true,
+    "Drives": [
+        {
+            "CloudStartPath": "/Shared",
+            "ConnectedFolders": [],
+            "Domain": "contoso.egnyte.com",
+            "DriveLetter": "Z:",
+            "Label": "Contoso Drive",
+            "OfflineFolders": [],
+            "UseSSO": true
+        },
+        {
+            "CloudStartPath": "/Private/::egnyte_username::",
+            "ConnectedFolders": [],
+            "Domain": "contoso.egnyte.com",
+            "DriveLetter": "S:",
+            "Label": "Private",
+            "OfflineFolders": [],
+            "UseSSO": true
+        }
+    ]
+}
