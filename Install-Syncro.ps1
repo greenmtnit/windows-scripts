@@ -27,7 +27,7 @@ if (-not $CustomerID -or -not $FolderID) {
 if ($Debug) {
     ## Define the log directory and log file path
     $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
-    $logFile = "$env:TEMP\SyncroInstallLog_$timestamp.txt"
+    $logFile = "$env:Public\SyncroInstallLog_$timestamp.txt"
     # Start logging to a transcript
     Start-Transcript -Path $logFile -Append
     Write-Host "Logging output to: $logFile"
@@ -55,7 +55,10 @@ if (-not (Test-Path -Path $syncroInstallerPath -PathType Leaf)) {
     }
     catch {
         # Error handling in case the download or installation fails
-        if ($Debug) { Write-Host "Installation failed: $_"}
+        if ($Debug) { 
+            Write-Host "Installation failed: $_"
+            Write-Host "Also see Syncro logs at C:\ProgramData\Syncro\Logs"
+        }
     }
 } 
 else {
