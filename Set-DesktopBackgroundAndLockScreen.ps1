@@ -108,7 +108,7 @@ if (! $DateCheck) { # Skip date check
 
 else {
     # Check for date
-    $installDate = (Get-ChildItem C:/ -Hidden | Where-Object { $_.Name -like "System Volume Information" }).CreationTime
+    $installDate = (Get-CimInstance Win32_OperatingSystem).InstallDate    
     
     #Define default ThresholdDays
     if (! $ThresholdDays) {
