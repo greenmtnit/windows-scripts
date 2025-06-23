@@ -7,8 +7,8 @@
   
   Expect to run this script multiple times with reboots between each to finish the install.
   Use the normal Sophos uninstaller instead if possible. See UninstallSophosNormal.bat
-  
   Logging: check C:\Windows\Temp\SophosZap log.txt or C:\Users\[user]\AppData\Local\Temp\Sophos\SophosZap log.txt
+  
 
   More info:
       Hudu: How to Uninstall Sophos Antivirus | https://hudu.greenmtnit.com/shared_article/fMoZjmBx6EQiWxsuL3qWHYgv

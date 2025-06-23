@@ -1,11 +1,9 @@
+@ECHO OFF
+
 REM ####################################
 REM UninstallAugmennt.bat
 REM Uninstalls Augmentt https://www.augmentt.com/
 REM ####################################
-
-
-@ECHO OFF
-
 
 IF NOT EXIST "C:\Program Files (x86)\Augmentt\unins000.exe" (
     ECHO Augmentt does not appear to be installed. Exiting.

@@ -2,6 +2,8 @@
   Uninstall-Kaseya.ps1
   
   Uninstalls Kaseya RMM Agent
+  
+  Tested working to remove Kaseya from multiple different IT providers.
     
 #>
 

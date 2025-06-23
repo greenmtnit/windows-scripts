@@ -2,7 +2,7 @@
 
 REM ####################################
 REM UninstallSophosNormal.bat
-REM Uninstalls Sophos Antivirus using uninstaller (as opposed to SophosZap)
+REM Uninstalls Sophos Antivirus using normal uninstaller (as opposed to SophosZap)
 REM
 REM See here for more info: How to Uninstall Sophos Antivirus | https://hudu.greenmtnit.com/shared_article/fMoZjmBx6EQiWxsuL3qWHYgv
 REM
