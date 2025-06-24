@@ -29,6 +29,10 @@
             Script runtime dropdown, strings "true" (default) or "false".
             Toggles whether to log output to a file.
 
+        $RandomRollout
+            Script runtime dropdown, strings "true" or "false" (default).
+            If true, the script will randomly execute only 1 out of 3 times.
+            Useful for staggered rollout.
 #>
 
 
@@ -117,6 +121,19 @@ if (-not ($SkipOfficialSupportCheck -eq "true")) {
 }
 else {
     Write-Host "NOTICE: SkipOfficialSupportCheck is set; skipping Windows 11 official support check."
+}
+
+## CHECK 4 - Random rollout requested?
+if ($RandomRollout -eq "true") {
+    Write-Host "Random rollout requested (1 in 3 chance of executing upgrade)"
+    if ((Get-Random -Minimum 1 -Maximum 4) -ne 1) {
+        Write-Host "Random roll requested: Not selected to run this time. Exiting."
+        if ($LogOutput -eq "true") { Stop-Transcript }
+        exit 0
+    }
+    else {
+        Write-Host "Random roll: Upgrade selected to run, proceeding!"
+    }
 }
 
 # DO UPGRADE
