@@ -3,7 +3,7 @@
     Checks RAID health on DELL PERC controllers.
 
 .DESCRIPTION
-    This script checks both virtual and physical drive status on DELL PERC Controllers using the OpenManage tool included in the MegaRAID storage manager.
+    This script checks both virtual and physical drive status on DELL PERC Controllers using the OpenManage tool.
     Source: https://www.cyberdrain.com/blog-series-monitoring-using-powershell-part-two-using-powershell-to-monitor-dell-systems/
     
 .NOTES
