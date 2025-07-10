@@ -15,16 +15,33 @@ IF NOT EXIST "C:\Program Files (x86)\CyberCNSAgent\cybercnsagent.exe" (
 )
 
 REM Delete registry key for ConnectSecure Agent
-REG DELETE "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\ConnectSecure Agent" /f
+set KEY="HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\ConnectSecure Agent"
+
+REM Check if the registry key exists
+REG QUERY %KEY% >nul 2>&1
+
+REM If the key exists, delete it
+if %errorlevel%==0 (
+    REG DELETE %KEY% /f
+) else (
+    echo Registry key not found: %KEY%
+)
 
 REM Delete empty program folder if it exists and is empty
 IF EXIST "C:\Program Files (x86)\CyberCNSAgent" (
     RD "C:\Program Files (x86)\CyberCNSAgent"
 )
 
-REM Delete Services
-sc delete cybercnsagent
-sc delete cybercnsagentmonitor
+REM Delete Services if they exist
+sc query cybercnsagent >nul 2>&1
+if %errorlevel%==0 (
+    sc delete cybercnsagent
+)
+
+sc query cybercnsagentmonitor >nul 2>&1
+if %errorlevel%==0 (
+    sc delete cybercnsagentmonitor
+)
 
 ECHO Uninstallation and cleanup complete.
 EXIT
