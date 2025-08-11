@@ -1,9 +1,9 @@
 <#
 
-Install-Windows11Version22H2FromIso.ps1
+Install-Windows11Version24H2FromIso.ps1
 
 .SYNOPSIS
-    Upgrades Windows to Windows 11, Version 22H2, using a downloaded .iso file.
+    Upgrades Windows to Windows 11, Version 24H2, using a downloaded .iso file.
     This is a good fallback method if other methods, such as the Windows 11 Installation Assistant, fail.
     
     This script should work on lower Windows 11 versions AND also upgrade Windows 10 to Windows 11.
@@ -11,8 +11,8 @@ Install-Windows11Version22H2FromIso.ps1
     *WARNING* - Automatically reboots the machine when upgrade is complete!
     
 .DESCRIPTION
-    This script checks if the target machine is already running Windows 11 22H2, whether it is a laptop, and if it officially supports Windows 11.
-    It allows skipping the laptop check and support check via variables. If all checks pass (or are skipped), it downloads and runs the Windows 11 22H2 .iso file, extracts the .iso, and then runs the upgrade using the extracted setup.exe . Optional logging is available.
+    This script checks if the target machine is already running Windows 11 24H2, whether it is a laptop, and if it officially supports Windows 11.
+    It allows skipping the laptop check and support check via variables. If all checks pass (or are skipped), it downloads and runs the Windows 11 24H2 .iso file, extracts the .iso, and then runs the upgrade using the extracted setup.exe . Optional logging is available.
 
 .NOTES
     This script is intended to be run from the SyncroMSP environment.
@@ -80,9 +80,9 @@ if (-not ($SkipLaptopCheck -eq "true")) {
     Write-Host "NOTICE: SkipLaptopCheck is set; skipping laptop check."
 }
 
-# Are we at 22H2 already? If so, bail from script.
-If ((Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'DisplayVersion').DisplayVersion -eq '22H2') {
-    Write-Output 'Host is already running version 22H2; no Feature Update required - exiting.'
+# Are we at 24H2 already? If so, bail from script.
+If ((Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'DisplayVersion').DisplayVersion -eq '24H2') {
+    Write-Output 'Host is already running version 24H2; no Update required - exiting.'
     exit
 }
 
@@ -135,7 +135,7 @@ if (!(Test-Path C:\!TECH\\WindowsSetup\Logs)) {
 # Define the download URI and paths
 
 $URI = "https://greenmtnitsolutions.egnyte.com/dd/76TbWJkFqBVX/"
-$DownloadPath = "C:\!TECH\WindowsSetup\Windows11_22H2.iso"
+$DownloadPath = "C:\!TECH\WindowsSetup\Windows11_24H2.iso"
 
 # Download the .iso
 # Set ProgressPreference to avoid slowdown from displaying progress
@@ -154,7 +154,7 @@ Copy-Item -Path "$ExtractPath" -Destination "C:\!TECH\WindowsSetup\" -Recurse -F
 Dismount-DiskImage -ImagePath $DownloadPath
 
 # Remove the downloaded ISO file
-Remove-Item "C:\!TECH\WindowsSetup\Windows11_22H2.iso" -Force
+Remove-Item "C:\!TECH\WindowsSetup\Windows11_24H2.iso" -Force
 
 # Check if device is a laptop or desktop
 $ArgumentList = "/Eula Accept /Auto Upgrade /Quiet /MigrateDrivers all /DynamicUpdate Disable /Telemetry disable /compat IgnoreWarning /ShowOOBE none /copylogs C:\!TECH\WindowsSetup\Logs"
