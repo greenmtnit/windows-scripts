@@ -23,6 +23,20 @@ IF %ERRORLEVEL%==0 (
     EXIT
 )
 
+REM ===== Check for at least 25GB free on C: =====
+REM Minimum free space in GB
+SET MinFreeGB=25
+
+REM Get free space on C: in GB using PowerShell and round to integer. Use PowerShell because Batch doesn't handle large numbers well.
+FOR /F %%A IN ('POWERSHELL -NoProfile -Command "[math]::Floor((Get-PSDrive C).Free / 1GB)"') DO SET FreeGB=%%A
+
+REM Compare to minimum threshold
+IF %FreeGB% LSS %MinFreeGB% (
+    ECHO ERROR: Not enough free disk space. Upgrade cannot proceed.
+    PAUSE
+    EXIT /B 1
+)
+
 REM ===== Confirmation Prompt 1 =====
 ECHO.
 ECHO =============================================
