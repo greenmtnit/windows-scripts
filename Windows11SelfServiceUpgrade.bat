@@ -1,6 +1,21 @@
+REM ####################################
+REM Windows11SelfServiceUpgrade.bat
+REM
+REM Batch script to allow user to upgrade their machine to Windows 11.
+REM Meant to be used in conjunction with Create-Windows11SelfServiceUpgradeShortcut.ps1
+REM https://github.com/greenmtnit/windows-scripts/blob/main/Create-Windows11SelfServiceUpgradeShortcut.ps1
+REM 
+REM Script overview:
+REM First, perform some simple checks:
+REM   - Checks current OS. Only Windows 10 is eligible for upgrade.
+REM   - Checks for at least 25GB free disk space
+REM Next, prompt the user to confirm the upgrade.
+REM Finally, download and run the Windows 11 Update Assistant.
+REM ####################################
+
 @ECHO OFF
 
-REM ===== Check OS Version =====
+REM ===== CHECK OS VERSION =====
 REM Get ProductName
 FOR /F "tokens=3*" %%A IN ('REG QUERY "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion" /v ProductName 2^>NUL') DO SET "ProductName=%%A %%B"
 
@@ -23,7 +38,7 @@ IF %ERRORLEVEL%==0 (
     EXIT
 )
 
-REM ===== Check for at least 25GB free on C: =====
+REM ===== CHECK FOR AT LEAST 25GB FREE ON C: =====
 REM Minimum free space in GB
 SET MinFreeGB=25
 
@@ -37,7 +52,9 @@ IF %FreeGB% LSS %MinFreeGB% (
     EXIT /B 1
 )
 
-REM ===== Confirmation Prompt 1 =====
+REM ===== PROMPT USER TO CONFIRM =====
+
+REM Confirmation Prompt 1
 ECHO.
 ECHO =============================================
 ECHO      WINDOWS 11 SELF-SERVICE UPGRADE
@@ -57,7 +74,7 @@ IF ERRORLEVEL 2 (
 )
 CLS
 
-REM ===== Confirmation Prompt 2 =====
+REM Confirmation Prompt 2
 ECHO.
 ECHO =============================================
 ECHO Let me ask you again:
