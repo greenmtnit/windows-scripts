@@ -9,6 +9,29 @@
     Windows 11 Installation Assistant in silent mode. Optional logging is available.
 
 .NOTES
+    # SETUP.EXE ARGUMENTS
+    # https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/windows-setup-command-line-options
+    
+    /EULA Accept: Automatically accepts the Windows Setup end user license agreement (EULA), which is required starting with Windows 11 before the installation begins.
+
+    /Auto Upgrade: Performs an automated upgrade of Windows, saving apps and data. This option disables the use of an unattend file and requires compatibility checks before installation.
+
+    /Quiet: Suppresses any Windows Setup user interface, including error messages and rollback UI, allowing the setup to run silently.
+
+    /MigrateDrivers all: Instructs Windows Setup to migrate all existing device drivers from the current installation to the upgraded installation.
+
+    /DynamicUpdate Disable: Prevents Windows Setup from searching for, downloading, or installing updates during the setup process.
+
+    /Telemetry disable: Disables the capture and reporting of installation telemetry data during Windows Setup.
+
+    /Compat IgnoreWarning: Instructs Windows Setup to complete the installation regardless of any dismissible compatibility warnings that are detected.
+
+    /ShowOOBE none: Skips the out-of-box experience (OOBE) by selecting the default settings, so the user is not prompted to interactively complete OOBE.
+
+    /CopyLogs C:!TECH\WindowsSetup\Logs: Specifies that if the setup fails, Windows Setup logs will be copied to the folder C:!TECH\WindowsSetup\Logs for troubleshooting.
+
+
+    # SYNCRO SETUP
     This script is intended to be run from the SyncroMSP environment.
     Set the following Syncro script variables:
         $SupportsWindows11
