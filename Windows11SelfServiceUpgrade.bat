@@ -10,7 +10,7 @@ REM First, perform some simple checks:
 REM   - Checks current OS. Only Windows 10 is eligible for upgrade.
 REM   - Checks for at least 25GB free disk space
 REM Next, prompt the user to confirm the upgrade.
-REM Finally, download and run the Windows 11 Update Assistant.
+REM Finally, download and run the Windows 11 Update Assistant. For GMITS managed machines, an AutoElevate rule exists to run the Assistant automatically.
 REM ####################################
 
 @ECHO OFF
