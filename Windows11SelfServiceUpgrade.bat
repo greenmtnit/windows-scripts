@@ -91,7 +91,7 @@ IF ERRORLEVEL 1 (
     ECHO OK! Proceeding with Windows 11 upgrade...
 )
 
-TIMEOUT /T 3
+TIMEOUT /T 3 >NUL
 CLS
 ECHO Getting things ready...
 
