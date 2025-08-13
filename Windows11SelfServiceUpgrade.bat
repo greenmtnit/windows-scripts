@@ -117,9 +117,9 @@ IF NOT %ERRORLEVEL% EQU 0 (
     REM Extract ZIP (no overwrite errors because dir was removed)
     POWERSHELL -COMMAND "Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::ExtractToDirectory('%ZIPFILE%', '%EXTRACTDIR%')" >NUL 2>&1
 
-    REM Run caffeine.exe (or caffeine64.exe if appropriate)
+    REM Run caffeine64.exe with 30 second interval
     CD /D "%EXTRACTDIR%"
-    START "" "caffeine64.exe"
+    START "" "caffeine64.exe" "30"
 )
 
 
