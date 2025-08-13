@@ -1,3 +1,5 @@
+@ECHO OFF
+
 REM ####################################
 REM Windows11SelfServiceUpgrade.bat
 REM
@@ -12,8 +14,6 @@ REM   - Checks for at least 25GB free disk space
 REM Next, prompt the user to confirm the upgrade.
 REM Finally, download and run the Windows 11 Update Assistant. For GMITS managed machines, an AutoElevate rule exists to run the Assistant automatically.
 REM ####################################
-
-@ECHO OFF
 
 REM ===== CHECK OS VERSION =====
 REM Get ProductName
