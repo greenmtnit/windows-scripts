@@ -91,6 +91,10 @@ IF ERRORLEVEL 1 (
     ECHO OK! Proceeding with Windows 11 upgrade...
 )
 
+TIMEOUT /T 3
+CLS
+ECHO Getting things ready...
+
 REM ===== DOWNLOAD AND RUN CAFFEINE -  PREVENT SLEEP DURING UPGRADE ===== 
 
 SET PROCESSNAME=caffeine64.exe
@@ -132,9 +136,9 @@ IF NOT EXIST "%WORKDIR%" (
 )
 
 REM ===== Download Windows 11 Installation Assistant =====
-CLS
+ECHO.
 ECHO Downloading Windows 11 Installation Assistant...this may take a few minutes.
-BITSADMIN /TRANSFER W11INSTALL /DOWNLOAD /PRIORITY HIGH "%URL%" "%FILE%"
+@BITSADMIN /TRANSFER W11INSTALL /DOWNLOAD /PRIORITY HIGH "%URL%" "%FILE%" >NUL 2>&1
 IF NOT EXIST "%FILE%" (
     ECHO ERROR: Failed to download Windows 11 Installation Assistant. Exiting!
     PAUSE
