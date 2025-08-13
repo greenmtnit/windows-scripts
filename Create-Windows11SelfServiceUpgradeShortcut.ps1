@@ -2,11 +2,11 @@
 
 Create-Windows11SelfServiceUpgradeShortcut.ps1
 
-Deploys a desktop shortcut that launches a batch script to open Microsoft Edge in kiosk mode for ConnectPay.
+Deploys a desktop shortcut to allow users to perform a self-service upgrade to Windows 11.
 
 This PowerShell script performs the following tasks:
 1. Creates necessary folder structure under "C:\Program Files\Green Mountain IT Solutions".
-2. Downloads a batch script ("Windows11SelfServiceUpgrade.bat") that upgrades a computer to Windows 11.
+2. Downloads a batch script ("Windows11SelfServiceUpgrade.bat") that upgrades a computer to Windows 11. See Github link for that script.
 3. Downloads a custom icon file for the shortcut from a publicly accessible URL.
 4. Creates a shortcut on the public desktop that points to the batch script, using the downloaded icon.
 
