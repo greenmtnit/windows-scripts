@@ -91,9 +91,35 @@ IF ERRORLEVEL 1 (
     ECHO OK! Proceeding with Windows 11 upgrade...
 )
 
+REM ===== DOWNLOAD AND RUN CAFFEINE -  PREVENT SLEEP DURING UPGRADE ===== 
+
+SET PROCESSNAME=caffeine64.exe
+SET URL=https://www.zhornsoftware.co.uk/caffeine/caffeine.zip
+SET ZIPFILE=%TEMP%\caffeine.zip
+SET EXTRACTDIR=%TEMP%\caffeine_extract
+
+REM Check if caffeine64.exe is running
+TASKLIST /FI "IMAGENAME eq %PROCESSNAME%" /FI "STATUS eq RUNNING" | FIND /I "%PROCESSNAME%" >NUL
+IF NOT %ERRORLEVEL% EQU 0 (
+    REM Download ZIP silently
+    @BITSADMIN /TRANSFER download_caffeine /PRIORITY normal %URL% %ZIPFILE% >NUL 2>&1
+
+    REM Delete extraction folder if it exists
+    IF EXIST "%EXTRACTDIR%" RMDIR /S /Q "%EXTRACTDIR%"
+
+    REM Create extraction folder
+    MKDIR "%EXTRACTDIR%"
+
+    REM Extract ZIP (no overwrite errors because dir was removed)
+    POWERSHELL -COMMAND "Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::ExtractToDirectory('%ZIPFILE%', '%EXTRACTDIR%')" >NUL 2>&1
+
+    REM Run caffeine.exe (or caffeine64.exe if appropriate)
+    CD /D "%EXTRACTDIR%"
+    START "" "caffeine64.exe"
+)
+
 
 REM ===== DO THE UPGRADE =====
-
 
 REM ===== Define working directory and URL =====
 SET "WORKDIR=C:\temp"

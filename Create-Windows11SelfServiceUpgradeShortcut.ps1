@@ -60,6 +60,8 @@ foreach ($dir in $directories) {
 # Download the script
 $ProgressPreference = "SilentlyContinue"
 
+Remove-Item $scriptPath -ErrorAction SilentlyContinue # Delete if already exist
+
 Try {
     Write-Host "Downloading Windows11SelfServiceUpgrade.bat..."
     Invoke-WebRequest -Uri $scriptURL -OutFile $scriptPath -ErrorAction Stop
@@ -70,6 +72,8 @@ Try {
 }
 
 # Download icon file
+Remove-Item $iconPath -ErrorAction SilentlyContinue # Delete if already exist
+
 Try {
     Write-Host "Downloading Windows11SelfServiceUpgrade.bat..."
     Invoke-WebRequest -Uri $iconURL -OutFile $iconPath -ErrorAction Stop
