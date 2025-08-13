@@ -145,6 +145,11 @@ IF NOT EXIST "%FILE%" (
     EXIT /B 1
 )
 
+REM ===== Prompt User =====
+CLS
+ECHO .
+ECHO NOTICE: Click Accept and Install when it appears.
+
 REM ===== Run the Windows 11 Installation Assistant silently =====
 ECHO Starting install...
 START "" "%FILE%" /SkipEULA /Auto upgrade /NoRestartUI /copylogs "%WORKDIR%"
