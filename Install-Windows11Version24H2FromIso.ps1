@@ -163,11 +163,6 @@ $ArgumentList = "/Eula Accept /Auto Upgrade /Quiet /MigrateDrivers all /DynamicU
 Write-Host "Starting upgrade!"
 Start-Process -Wait -FilePath "C:\!TECH\WindowsSetup\setup.exe" -ArgumentList $ArgumentList
 
-if (!(Test-IsLaptop)){
-    Start-Sleep -Seconds 10
-    Restart-Computer
-}
-
 # END LOGGING
 if ($LogOutput -eq "true") {
     Stop-Transcript
