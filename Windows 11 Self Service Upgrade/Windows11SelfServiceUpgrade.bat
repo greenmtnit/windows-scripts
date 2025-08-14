@@ -1,4 +1,5 @@
 @ECHO OFF
+TITLE Windows 11 Upgrade
 
 REM ####################################
 REM Windows11SelfServiceUpgrade.bat
