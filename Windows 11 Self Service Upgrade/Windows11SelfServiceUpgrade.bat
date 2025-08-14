@@ -76,10 +76,9 @@ CLS
 
 REM Confirmation Prompt 2
 ECHO.
-ECHO =============================================
 ECHO Let me ask you again:
 ECHO.
-ECHO BY PROCEEDING, YOU CONFIRM YOU HAVE READ THE ABOVE INFORMATION, UNDERSTAND THE RISKS, AND WISH TO PROCEED WITH THE WINDOWS 11 UPGRADE.
+ECHO BY PROCEEDING, YOU CONFIRM YOU HAVE READ THE WARNING, UNDERSTAND THE RISKS, AND WISH TO PROCEED WITH THE WINDOWS 11 UPGRADE.
 ECHO.
 CHOICE /C YN /M "Press Y to confirm, or N to cancel."
 IF ERRORLEVEL 2 (
@@ -149,6 +148,7 @@ REM ===== Prompt User =====
 CLS
 ECHO .
 ECHO NOTICE: Click Accept and Install when it appears.
+ECHO If the upgrade window does not appear, check for and click the icon on the taskbar.
 
 REM ===== Run the Windows 11 Installation Assistant silently =====
 ECHO Starting install...

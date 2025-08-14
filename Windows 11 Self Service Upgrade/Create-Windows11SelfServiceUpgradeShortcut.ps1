@@ -15,7 +15,7 @@ This PowerShell script performs the following tasks:
 # CHANGE THESE
 $shortcutPath = "C:\Users\Public\Desktop\Windows 11 Self Service Upgrade.lnk"
 $batchFilePath = "C:\Program Files\Green Mountain IT Solutions\Scripts\Windows11SelfServiceUpgrade.bat"
-$scriptURL = "https://raw.githubusercontent.com/greenmtnit/windows-scripts/refs/heads/main/Windows11SelfServiceUpgrade.bat"
+$scriptURL = "https://raw.githubusercontent.com/greenmtnit/windows-scripts/refs/heads/main/Windows%2011%20Self%20Service%20Upgrade/Windows11SelfServiceUpgrade.bat"
 $scriptPath = "C:\Program Files\Green Mountain IT Solutions\Scripts\Windows11SelfServiceUpgrade.bat"
 $iconURL = "https://s3.us-east-1.wasabisys.com/gmits-public/Windows11Upgrade.ico"
 $iconPath = "C:\Program Files\Green Mountain IT Solutions\Scripts\Windows11Upgrade.ico"
