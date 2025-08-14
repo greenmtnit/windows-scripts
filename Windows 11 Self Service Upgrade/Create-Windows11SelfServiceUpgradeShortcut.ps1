@@ -12,6 +12,8 @@ This PowerShell script performs the following tasks:
 
 #>
 
+Import-Module $env:SyncroModule
+
 # CHANGE THESE
 $shortcutPath = "C:\Users\Public\Desktop\Windows 11 Self Service Upgrade.lnk"
 $batchFilePath = "C:\Program Files\Green Mountain IT Solutions\Scripts\Windows11SelfServiceUpgrade.bat"
@@ -20,20 +22,22 @@ $scriptPath = "C:\Program Files\Green Mountain IT Solutions\Scripts\Windows11Sel
 $iconURL = "https://s3.us-east-1.wasabisys.com/gmits-public/Windows11Upgrade.ico"
 $iconPath = "C:\Program Files\Green Mountain IT Solutions\Scripts\Windows11Upgrade.ico"
 
-# CHECK IF ALREADY ON 11
-$CurrentVersion = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion"
-if ($CurrentVersion.DisplayVersion) {
-    $DisplayVersion = $CurrentVersion.DisplayVersion
-} else {
-    # 19041 and older do not have DisplayVersion key, if so we grab ReleaseID instead (no longer updated in new versions)
-    $DisplayVersion = $CurrentVersion.ReleaseId 
-}
+if ($SkipAlreadyOn11Check -ne "true") {
+    # CHECK IF ALREADY ON 11
+    $CurrentVersion = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion"
+    if ($CurrentVersion.DisplayVersion) {
+        $DisplayVersion = $CurrentVersion.DisplayVersion
+    } else {
+        # 19041 and older do not have DisplayVersion key, if so we grab ReleaseID instead (no longer updated in new versions)
+        $DisplayVersion = $CurrentVersion.ReleaseId 
+    }
 
-$Build = $CurrentVersion.CurrentBuildNumber
+    $Build = $CurrentVersion.CurrentBuildNumber
 
-if ($Build -ge 22000) { # 22000 and greater are Windows 11
-    Write-Host "This machine is already on Windows 11. Exiting!"
-    exit 0
+    if ($Build -ge 22000) { # 22000 and greater are Windows 11
+        Write-Host "This machine is already on Windows 11. Exiting!"
+        exit 0
+    }
 }
 
 # CHECK IF WINDOWS 11 IS SUPPORTED - CHECK SYNCRO CUSTOM FIELD
@@ -75,13 +79,14 @@ Try {
 Remove-Item $iconPath -ErrorAction SilentlyContinue # Delete if already exist
 
 Try {
-    Write-Host "Downloading Windows11SelfServiceUpgrade.bat..."
+    Write-Host "Downloading shortcut icon..."
     Invoke-WebRequest -Uri $iconURL -OutFile $iconPath -ErrorAction Stop
 } Catch {
     Write-Host "ERROR: Failed to download the file."
     Write-Host $_.Exception.Message
     Exit 1
 }
+
 # Check if shortcut already exists
 if (Test-Path -Path $shortcutPath) {
     Write-Host "Shortcut already exists at $shortcutPath. Overwriting..."

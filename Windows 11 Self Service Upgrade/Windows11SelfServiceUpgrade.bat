@@ -149,6 +149,7 @@ CLS
 ECHO .
 ECHO NOTICE: Click Accept and Install when it appears.
 ECHO If the upgrade window does not appear, check for and click the icon on the taskbar.
+TIMEOUT /T 5 >NUL
 
 REM ===== Run the Windows 11 Installation Assistant silently =====
 ECHO Starting install...
