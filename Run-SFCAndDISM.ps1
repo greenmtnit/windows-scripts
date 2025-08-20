@@ -20,19 +20,28 @@ if (-not (Test-Path -Path $logDirectory -ErrorAction SilentlyContinue)) {
 }
 
 # Start logging to a transcript
-Start-Transcript -Path $logFile -Append
-
 Write-Host "Logging output to: $logFile"
 
 # Run DISM and SFC
-dism /Online /Cleanup-Image /CheckHealth            # Checks if the Windows image has any corruption or issues (quick check)
-dism /Online /Cleanup-Image /ScanHealth             # Performs a deeper scan to detect corruption in the Windows image
-dism /Online /Cleanup-Image /StartComponentCleanup  # Cleans up and removes unnecessary files from the Component Store to free disk space
-dism /Online /Cleanup-Image /RestoreHealth          # Repairs the Windows image by fixing detected corruption using Windows Update or a source
-sfc /scannow                                        # Scans all protected system files and repairs corrupted or missing ones using the repaired image
 
-# Stop logging
-Stop-Transcript
+# DISM Commands
+# Checks if the Windows image has any corruption or issues (quick check)
+dism /Online /Cleanup-Image /CheckHealth           | Tee-Object -FilePath "$logFile" -Append
+# Performs a deeper scan to detect corruption in the Windows image
+dism /Online /Cleanup-Image /ScanHealth            | Tee-Object -FilePath "$logFile" -Append
+# Cleans up and removes unnecessary files from the Component Store to free disk space
+dism /Online /Cleanup-Image /StartComponentCleanup | Tee-Object -FilePath "$logFile" -Append
+# Repairs the Windows image by fixing detected corruption using Windows Update or a source
+dism /Online /Cleanup-Image /RestoreHealth         | Tee-Object -FilePath "$logFile" -Append
+
+# SFC command
+# SFC.exe outputs in Unicode, so change the output encoding before running it in PowerShell:
+$oldEncoding = [Console]::OutputEncoding
+[Console]::OutputEncoding = [Text.Encoding]::Unicode
+# Scans all protected system files and repairs corrupted or missing ones using the repaired image
+sfc /scannow | Tee-Object -FilePath "$logFile" -Append
+# Revert to old logging
+[Console]::OutputEncoding = $oldEncoding                                   
 
 # If running in Syncro, upload the log file to the Syncro asset page
 if ($null -ne $env:SyncroModule) {
