@@ -16,12 +16,15 @@ if ($null -ne $env:SyncroModule) { Import-Module $env:SyncroModule -DisableNameC
 
 # VARIABLES - CHANGE THESE 
 
-## Minimum Build Versions
-## To get build numbers, see: https://en.wikipedia.org/wiki/Windows_11_version_history
+# Minimum Build Versions
+# To get build numbers, see: https://en.wikipedia.org/wiki/Windows_11_version_history
 
 $Windows10MinimumBuild = "19045" # 22H2, EoL October 14, 2025
 $Windows11MinimumBuild = "22631" # 23H2, EoL November 11, 2025
 #$Windows11MinimumBuild = "26100" # 24H2, EoL October 13, 2026
+
+# Date to start showing alerts to Windows 10 users.
+$alertStartDate = [datetime]"September 8, 2025"
 
 # FUNCTIONS
 function Get-OSInfo { # https://gist.github.com/asheroto/cfa26dd00177a03c81635ea774406b2b
@@ -297,8 +300,15 @@ $Window.ShowDialog()
 # End of RunAsUser $ScriptBlock
 ################################################
 
+$today = Get-Date
 
-Invoke-AsCurrentUser -ScriptBlock $ScriptBlock -NoWait
+if ($today -ge $alertStartDate) {
+    Invoke-AsCurrentUser -ScriptBlock $ScriptBlock -NoWait
+} 
+else {
+    Write-Host "It's not yet the defined `$alertStartDate of $($alertStartDate.ToString("MMMM dd, yyyy"))."
+    Write-Host "Skipping Windows 10 alert."
+}
 
 }
 
