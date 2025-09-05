@@ -34,7 +34,7 @@ Install-Windows11Version24H2FromIso.ps1
 
     /ShowOOBE none: Skips the out-of-box experience (OOBE) by selecting the default settings, so the user is not prompted to interactively complete OOBE.
 
-    /CopyLogs C:!TECH\WindowsSetup\Logs: Specifies that if the setup fails, Windows Setup logs will be copied to the folder C:!TECH\WindowsSetup\Logs for troubleshooting.
+    /CopyLogs C:!TECH\Windows11Setup\Logs: Specifies that if the setup fails, Windows Setup logs will be copied to the folder C:!TECH\Windows11Setup\Logs for troubleshooting.
 
     
     # SYNCRO SETUP
@@ -53,6 +53,11 @@ Install-Windows11Version24H2FromIso.ps1
             Script runtime dropdown, strings "true" or "false" (default).
             Toggles whether to skip checking if the machine is a laptop.
             If the check is not skipped, the script will not run on laptops.
+            
+        #SkipDownload
+            Script runtime dropdown, strings "true" or "false" (default).
+            Toggles whether to skip downloading the Windows 11 .iso
+            Useful if the installer was downloaded previously, i.e. by a previous script run.
          
         $LogOutput
             Script runtime dropdown, strings "true" (default) or "false".
@@ -140,51 +145,70 @@ if ($freeSpaceGB -lt 20) {
 
 Write-Host "Proceeding with upgrade!"
 
-# Create the C:\!TECH directory if it doesn't exist~
+# Create the C:\!TECH directory if it doesn't exist
 if (!(Test-Path -Path "C:\!TECH" -PathType Container)) {
     New-Item -Path "C:\!TECH" -ItemType Directory
 }
 
-# Create the WindowsSetup directory if it doesn't exist
-if (!(Test-Path C:\!TECH\\WindowsSetup)) {
-    New-Item -ItemType Directory -Path "C:\!TECH\WindowsSetup"
+# Create the Windows11Setup directory if it doesn't exist
+if (!(Test-Path C:\!TECH\\Windows11Setup)) {
+    New-Item -ItemType Directory -Path "C:\!TECH\Windows11Setup"
 }
 
 # Create the Logs directory if it doesn't exist
-if (!(Test-Path C:\!TECH\\WindowsSetup\Logs)) {
-    New-Item -ItemType Directory -Path "C:\!TECH\WindowsSetup\Logs"
+if (!(Test-Path C:\!TECH\\Windows11Setup\Logs)) {
+    New-Item -ItemType Directory -Path "C:\!TECH\Windows11Setup\Logs"
 }
 
-# Define the download URI and paths
+# 
+if ($SkipDownload -eq "true") {
+    Write-Host "NOTICE: SkipDownload is set; skipping downloading .iso."
+    
+    $setupPath = "C:\!TECH\\Windows11Setup\Setup.exe"
+    
+    if (-Not (Test-Path $setupPath)) {
+        Write-Host "Setup file not found!"
+        Write-Host "ERROR: SkipDownload was set, but the installer does not appear to have been downloaded previously."
+        exit 1
+    }
 
-$URI = "https://greenmtnitsolutions.egnyte.com/dd/76TbWJkFqBVX/"
-$DownloadPath = "C:\!TECH\WindowsSetup\Windows11_24H2.iso"
+}
 
-# Download the .iso
-# Set ProgressPreference to avoid slowdown from displaying progress
-$ProgressPreference = "SilentlyContinue"
-Invoke-WebRequest -Uri $URI -OutFile $DownloadPath
+else {
+    # Download the .iso and extract its contents
+    
+    # Define the download URI and paths
 
-# Mount the downloaded disk image
-$mountResult = Mount-DiskImage -ImagePath $DownloadPath
-$driveLetter = ($mountResult | Get-Volume).DriveLetter
-$ExtractPath = $driveLetter + ":\*"
+    $URI = "https://greenmtnitsolutions.egnyte.com/dd/76TbWJkFqBVX/"
+    $DownloadPath = "C:\!TECH\Windows11Setup\Windows11_24H2.iso"
 
-# Copy the contents of the mounted image to the WindowsSetup directory
-Copy-Item -Path "$ExtractPath" -Destination "C:\!TECH\WindowsSetup\" -Recurse -Force
+    # Download the .iso
+    # Set ProgressPreference to avoid slowdown from displaying progress
+    $ProgressPreference = "SilentlyContinue"
+    Invoke-WebRequest -Uri $URI -OutFile $DownloadPath
 
-# Dismount the disk image
-Dismount-DiskImage -ImagePath $DownloadPath
+    # Mount the downloaded disk image
+    $mountResult = Mount-DiskImage -ImagePath $DownloadPath
+    $driveLetter = ($mountResult | Get-Volume).DriveLetter
+    $ExtractPath = $driveLetter + ":\*"
 
-# Remove the downloaded ISO file
-Remove-Item "C:\!TECH\WindowsSetup\Windows11_24H2.iso" -Force
+    # Copy the contents of the mounted image to the Windows11Setup directory
+    Copy-Item -Path "$ExtractPath" -Destination "C:\!TECH\Windows11Setup\" -Recurse -Force
+
+    # Dismount the disk image
+    Dismount-DiskImage -ImagePath $DownloadPath
+
+    # Remove the downloaded ISO file
+    Remove-Item "C:\!TECH\Windows11Setup\Windows11_24H2.iso" -Force
+
+}
 
 # Check if device is a laptop or desktop
-$ArgumentList = "/Eula Accept /Auto Upgrade /Quiet /MigrateDrivers all /DynamicUpdate Disable /Telemetry disable /Compat IgnoreWarning /ShowOOBE none /CopyLogs C:\!TECH\WindowsSetup\Logs"
+$ArgumentList = "/Eula Accept /Auto Upgrade /Quiet /MigrateDrivers all /DynamicUpdate Disable /Telemetry disable /Compat IgnoreWarning /ShowOOBE none /CopyLogs C:\!TECH\Windows11Setup\Logs"
 
 # Start the upgrade Process
 Write-Host "Starting upgrade!"
-Start-Process -Wait -FilePath "C:\!TECH\WindowsSetup\setup.exe" -ArgumentList $ArgumentList
+Start-Process -Wait -FilePath "C:\!TECH\Windows11Setup\setup.exe" -ArgumentList $ArgumentList
 
 # END LOGGING
 if ($LogOutput -eq "true") {
