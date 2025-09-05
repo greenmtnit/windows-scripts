@@ -1,7 +1,9 @@
 <#
   Get-WindowsOSVersionInfo.ps1
   
-  Checks if Windows 10 or Windows 11 is runnign a supported version.
+  Gets Windows version, build number, and edition. 
+  
+  Also checks if Windows 10 or Windows 11 is running a supported version.
   If on an unsupported version, an RMM alert is generated in SyncroMSP.
   
   If the script detects Windows 10, a GUI pop-up will be displayed to the currently logged in user advising them of the upcoming Windows 10 EoL.
@@ -18,8 +20,8 @@ if ($null -ne $env:SyncroModule) { Import-Module $env:SyncroModule -DisableNameC
 ## To get build numbers, see: https://en.wikipedia.org/wiki/Windows_11_version_history
 
 $Windows10MinimumBuild = "19045" # 22H2, EoL October 14, 2025
-#$Windows11MinimumBuild = "22631" # 23H2, EoL November 11, 2025
-$Windows11MinimumBuild = "26100" # 24H2, EoL October 13, 2026
+$Windows11MinimumBuild = "22631" # 23H2, EoL November 11, 2025
+#$Windows11MinimumBuild = "26100" # 24H2, EoL October 13, 2026
 
 # FUNCTIONS
 function Get-OSInfo { # https://gist.github.com/asheroto/cfa26dd00177a03c81635ea774406b2b
@@ -122,6 +124,11 @@ if (Get-Module -Name RunAsUser -ListAvailable) {
     Write-Host "RunAsUser Module is already installed; skipping install"
 }
 else {
+    $toolsDirectory = "C:\Program Files\Green Mountain IT Solutions\Tools"
+    if (-not (Test-Path -Path $toolsDirectory -PathType Container)) {
+        New-Item -Path $toolsDirectory -ItemType Directory -Force | Out-Null
+    }
+
     $moduleURL = "https://github.com/KelvinTegelaar/RunAsUser/archive/refs/heads/master.zip"
     $moduleDownloadPath = Join-Path -Path $toolsDirectory -ChildPath "RunAsUser.zip"
 
