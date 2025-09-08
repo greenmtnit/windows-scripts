@@ -303,7 +303,10 @@ $Window.ShowDialog()
 $today = Get-Date
 
 if ($today -ge $alertStartDate) {
-    Invoke-AsCurrentUser -ScriptBlock $ScriptBlock -NoWait
+    if ($null -ne $env:SyncroModule) {
+        Log-Activity -Message "Windows 10 End of Life alert was displayed." -EventName "Windows Upgrade Alert"
+    }   
+    Invoke-AsCurrentUser -ScriptBlock $ScriptBlock -NoWait # Show the GUI Alert
 } 
 else {
     Write-Host "It's not yet the defined `$alertStartDate of $($alertStartDate.ToString("MMMM dd, yyyy"))."
