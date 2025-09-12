@@ -12,6 +12,11 @@ You may be able to adapt for other RMM and elevation tools.
 
 ## Steps
 
+### Read and Update the Scripts
+You are responsible for reading, understanding, and testing all scripts before deployment.
+
+Be warned that some alerts, file paths, etc. may use our company name. You'll want to change these.
+
 ### Deploy Windows 11 Compatibility Check Script
 Deploy the [Windows 11 Compatibility Check Script](https://github.com/greenmtnit/windows-scripts/blob/main/Check-Windows11Support.ps1) via Syncro. Recommended: add the script as a Setup Script in Syncro policies so it will run on every machine added to Syncro.
 
