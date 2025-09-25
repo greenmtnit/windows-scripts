@@ -38,7 +38,7 @@ if ($Debug) {
 
 # Define paths and URLs for the Syncro installer
 $syncroInstallerPath = 'C:\ProgramData\Syncro\bin\Syncro.Overmind.Service.exe' # Path where Syncro is installed
-$syncroInstallerUri = 'https://rmm.syncromsp.com/dl/rs/djEtMzEyODAxOTAtMTczOTgxODAxMi00ODEwNS0zNzA1MjI3' # Syncro installer download URL
+$syncroInstallerUri = 'https://rmm.syncromsp.com/dl/rs/djEtMTU5Mjk5NjctMTU2ODQ5OTg3NC00ODEwNS0xMzA2NzU1' # Syncro installer download URL
 $syncroSetupPath = "$env:TEMP\SyncroSetup-GreenMountainITSolutions.exe" # Temporary path for the downloaded installer
 
 # Check if Syncro is already installed
