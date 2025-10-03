@@ -1,7 +1,7 @@
 <#
   Get-MsftEntraDeviceId.ps1
   
-  Gets the Microsfot Entra Device ID and writes it to the msftEntraDeviceId Syncro asset custom field.
+  Gets the Microsoft Entra Device ID and writes it to the msftEntraDeviceId Syncro asset custom field.
   
   For use with SAASAlerts. Reference: https://help.saasalerts.kaseya.com/help/Content/Information/information-on-microsoft-entra-device-id.htm
 #>
