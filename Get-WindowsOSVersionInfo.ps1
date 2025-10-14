@@ -19,12 +19,9 @@ if ($null -ne $env:SyncroModule) { Import-Module $env:SyncroModule -DisableNameC
 # Minimum Build Versions
 # To get build numbers, see: https://en.wikipedia.org/wiki/Windows_11_version_history
 
-$Windows10MinimumBuild = "19045" # 22H2, EoL October 14, 2025
+# $Windows10MinimumBuild = "19045" # 22H2, EoL October 14, 2025
 $Windows11MinimumBuild = "22631" # 23H2, EoL November 11, 2025
 #$Windows11MinimumBuild = "26100" # 24H2, EoL October 13, 2026
-
-# Date to start showing alerts to Windows 10 users.
-$alertStartDate = [datetime]"September 8, 2025"
 
 # FUNCTIONS
 function Get-OSInfo { # https://gist.github.com/asheroto/cfa26dd00177a03c81635ea774406b2b
@@ -173,52 +170,47 @@ $AlertBody = "This machine is running an unsupported operating system build vers
 
 # Windows 10 Checks
 if ($osInfo.NumericVersion -eq "10") {
-    if ($currentBuild -lt $Windows10MinimumBuild) {
-        Write-Host "WARNING: Unsupported operating system version detected!"
-        if ($null -ne $env:SyncroModule) {
-            Rmm-Alert -Category $AlertCategory -Body $AlertBody
-        }
+    Write-Host "WARNING: Unsupported operating system version detected!"
+    if ($null -ne $env:SyncroModule) {
+        Rmm-Alert -Category $AlertCategory -Body $AlertBody
     }
-    else {
-        Write-Host "This machine is running a supported operating system version."
-        if ($null -ne $env:SyncroModule) {
-            Close-Rmm-Alert -Category $AlertCategory -CloseAlertTicket "true"
-        }
-    }
+
     
-    # Display Warning Pop-up on Windows 10
+# Display Warning Pop-up on Windows 10
 
 ################################################
 # Start of RunAsUser $ScriptBlock
 
 $ScriptBlock = {
-$message = "This computer is running Windows 10, which reaches End-of-Life on October 14, 2025.
-Please use the self-service upgrade icon on your desktop, if present,    
+$message = "This computer is running Windows 10, which reached End-of-Life on October 14, 2025.
+Running an operating system past its end-of-life date is a serious security risk.
+Please use the self-service upgrade icon on your desktop, if present,
 or contact your IT provider ASAP for assistance."
 
 # Load WPF assemblies
 Add-Type -AssemblyName PresentationFramework
 
-# Define XAML with a Button style that changes background color on hover
+# Define XAML
 [xml]$XAML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Upgrade Required"
         MinWidth="450" MinHeight="250"
         WindowStartupLocation="CenterScreen"
-        Background="#FAFAFA"
-        Foreground="#222"
+        Background="#FFF5F5"
+        Foreground="#111"
         SizeToContent="WidthAndHeight"
         Topmost="True"
         ResizeMode="NoResize"
         WindowStyle="None"
         AllowsTransparency="False">
+
     <Window.Resources>
         <Style x:Key="HoverButtonStyle" TargetType="Button">
-            <Setter Property="Background" Value="Gray"/>
+            <Setter Property="Background" Value="#DC2626"/>
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="Padding" Value="20,8"/>
             <Setter Property="Width" Value="120"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -230,14 +222,10 @@ Add-Type -AssemblyName PresentationFramework
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#016839"/>
+                                <Setter TargetName="border" Property="Background" Value="#B91C1C"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#014B30"/>
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="border" Property="Background" Value="LightGray"/>
-                                <Setter Property="Foreground" Value="Gray"/>
+                                <Setter TargetName="border" Property="Background" Value="#7F1D1D"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -245,30 +233,39 @@ Add-Type -AssemblyName PresentationFramework
             </Setter>
         </Style>
     </Window.Resources>
-    <Border BorderThickness="2" BorderBrush="#016839" Padding="10">
+
+    <Border BorderThickness="3" BorderBrush="#DC2626" CornerRadius="6" Padding="10">
         <Grid Margin="10">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>   <!-- Header -->
                 <RowDefinition Height="*"/>     <!-- Body -->
                 <RowDefinition Height="Auto"/>  <!-- Button -->
             </Grid.RowDefinitions>
-            <!-- Header Row -->
-            <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,0,0,10">
-                <TextBlock Text="⚠" FontSize="26" Foreground="#DC2626" Margin="0,0,8,0"/>
-                <TextBlock Text="System Update Needed"
-                           FontSize="20" FontWeight="Bold"
-                           VerticalAlignment="Center"/>
-            </StackPanel>
+
+            <!-- Header -->
+            <Border Grid.Row="0" Background="#DC2626" Padding="8" CornerRadius="4">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <TextBlock Text="⚠" FontSize="28" Foreground="White" Margin="0,0,8,0"/>
+                    <TextBlock Text="CRITICAL: Windows 10 Support Has Ended"
+                               FontSize="18"
+                               FontWeight="Bold"
+                               Foreground="White"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+
             <!-- Message -->
             <TextBlock Name="MessageText" Grid.Row="1"
                        TextWrapping="Wrap"
                        FontSize="15"
+                       FontWeight="SemiBold"
+                       LineHeight="22"
                        TextAlignment="Center"
-                       Margin="5"
-                       Foreground="Black"/>
+                       Margin="15,20,15,10"
+                       Foreground="#3B0D0C"/>
+
             <!-- Buttons -->
-            <StackPanel Grid.Row="2" Orientation="Horizontal"
-                        HorizontalAlignment="Center" Margin="0,15,0,0">
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,15,0,0">
                 <Button Name="DismissButton"
                         Content="Dismiss"
                         Style="{StaticResource HoverButtonStyle}"
@@ -278,16 +275,15 @@ Add-Type -AssemblyName PresentationFramework
     </Border>
 </Window>
 "@
-# Do not indent the previous line!
 
-# Load the XAML
+# Load XAML
 $reader = New-Object System.Xml.XmlNodeReader $XAML
 $Window = [Windows.Markup.XamlReader]::Load($reader)
 
-# Insert message dynamically
+# Set message text
 $Window.FindName("MessageText").Text = $message
 
-# Get the Dismiss button and attach event
+# Hook up Dismiss button
 $DismissButton = $Window.FindName("DismissButton")
 $DismissButton.Add_Click({
     $Window.Close()
@@ -296,22 +292,15 @@ $DismissButton.Add_Click({
 # Show window
 $Window.ShowDialog()
 
-}
 # End of RunAsUser $ScriptBlock
 ################################################
 
 $today = Get-Date
 
-if ($today -ge $alertStartDate) {
-    if ($null -ne $env:SyncroModule) {
-        Log-Activity -Message "Windows 10 End of Life alert was displayed." -EventName "Windows Upgrade Alert"
-    }   
-    Invoke-AsCurrentUser -ScriptBlock $ScriptBlock -NoWait # Show the GUI Alert
-} 
-else {
-    Write-Host "It's not yet the defined `$alertStartDate of $($alertStartDate.ToString("MMMM dd, yyyy"))."
-    Write-Host "Skipping Windows 10 alert."
-}
+if ($null -ne $env:SyncroModule) {
+    Log-Activity -Message "Windows 10 End of Life alert was displayed." -EventName "Windows Upgrade Alert"
+}   
+Invoke-AsCurrentUser -ScriptBlock $ScriptBlock -NoWait # Show the GUI Alert
 
 }
 
@@ -330,4 +319,3 @@ elseif ($osInfo.NumericVersion -eq "11") {
         }
     }
 }
-
