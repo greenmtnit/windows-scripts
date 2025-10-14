@@ -174,7 +174,6 @@ if ($osInfo.NumericVersion -eq "10") {
     if ($null -ne $env:SyncroModule) {
         Rmm-Alert -Category $AlertCategory -Body $AlertBody
     }
-}
     
 # Display Warning Pop-up on Windows 10
 
@@ -294,6 +293,8 @@ $Window.ShowDialog()
 
 # End of RunAsUser $ScriptBlock
 ################################################
+
+}
 
 $today = Get-Date
 
