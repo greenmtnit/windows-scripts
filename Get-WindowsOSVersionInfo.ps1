@@ -171,9 +171,18 @@ $AlertBody = "This machine is running an unsupported operating system build vers
 # Windows 10 Checks
 if ($osInfo.NumericVersion -eq "10") {
     Write-Host "WARNING: Unsupported operating system version detected!"
-    if ($null -ne $env:SyncroModule) {
-        Rmm-Alert -Category $AlertCategory -Body $AlertBody
+    
+    # Grace period for new clients - check if Syncro was installed less than 60 days ago. If so, don't show alerts.
+    $syncroFolder = "C:\Program Files\RepairTech\Syncro"
+    $creationTime = (Get-Item $syncroFolder).CreationTime
+    $threshold = (Get-Date).AddDays(-60)
+    if ($creationTime -gt $threshold) {
+        Write-Output "Syncro was installed less than 60 days ago. Skipping Windows 10 alerts."
     }
+    else { # not in grace period, show alerts
+        if ($null -ne $env:SyncroModule) {
+            Rmm-Alert -Category $AlertCategory -Body $AlertBody
+        }
     
 # Display Warning Pop-up on Windows 10
 
@@ -290,20 +299,19 @@ $DismissButton.Add_Click({
 
 # Show window
 $Window.ShowDialog()
-
+}
 # End of RunAsUser $ScriptBlock
 ################################################
 
-}
+        if ($null -ne $env:SyncroModule) {
+            Log-Activity -Message "Windows 10 End of Life alert was displayed." -EventName "Windows Upgrade Alert"
+        }   
+        Invoke-AsCurrentUser -ScriptBlock $ScriptBlock -NoWait # Show the GUI Alert
 
-$today = Get-Date
-
-if ($null -ne $env:SyncroModule) {
-    Log-Activity -Message "Windows 10 End of Life alert was displayed." -EventName "Windows Upgrade Alert"
-}   
-Invoke-AsCurrentUser -ScriptBlock $ScriptBlock -NoWait # Show the GUI Alert
+    }
 
 }
+
 
 # Windows 11 Checks
 elseif ($osInfo.NumericVersion -eq "11") {
