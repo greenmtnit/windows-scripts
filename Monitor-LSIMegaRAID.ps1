@@ -68,7 +68,7 @@ while ($ControllerNum -le $ControllersCount) {
         foreach ($Drive in $PDJson.Controllers.'response data'.'Drive Information') {
             $Status = "$($Drive.Model) with Disk ID $($Drive.DID) status is $($Drive.State)"
             Write-Host $Status
-            if ($Drive.State -ne "Onln") {
+            if ($Drive.State -notmatch "^(Onln|UGood)$") {
                 $ErrorStatus += "$Status`n"
             }
         }
@@ -86,6 +86,7 @@ if ($ErrorStatus) {
 } else {
     $RAIDStatus = "Healthy"
     Write-Host "`nRAID status is $RAIDStatus."
+    Close-Rmm-Alert -Category "RAID" -CloseAlertTicket "true"
 }
 
 if ($ScriptError) {
