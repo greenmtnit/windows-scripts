@@ -23,6 +23,248 @@ if ($null -ne $env:SyncroModule) { Import-Module $env:SyncroModule -DisableNameC
 $Windows11MinimumBuild = "22631" # 23H2, EoL November 11, 2025
 #$Windows11MinimumBuild = "26100" # 24H2, EoL October 13, 2026
 
+# SCRIPT BLOCKS - For GUI Pop-Ups
+
+################################################
+# SCRIPT BLOCK 1 - $Win10ScriptBlock
+################################################
+$Win10ScriptBlock = {
+$message = "This computer is running Windows 10, which reached End-of-Life on October 14, 2025.
+Running an operating system past its end-of-life date is a serious security risk.
+Please use the self-service upgrade icon on your desktop, if present,
+or contact your IT provider ASAP for assistance."
+
+# Load WPF assemblies
+Add-Type -AssemblyName PresentationFramework
+
+# Define XAML
+[xml]$XAML = @"
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Upgrade Required"
+        MinWidth="450" MinHeight="250"
+        WindowStartupLocation="CenterScreen"
+        Background="#FFF5F5"
+        Foreground="#111"
+        SizeToContent="WidthAndHeight"
+        Topmost="True"
+        ResizeMode="NoResize"
+        WindowStyle="None"
+        AllowsTransparency="False">
+
+    <Window.Resources>
+        <Style x:Key="HoverButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#DC2626"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Padding" Value="20,8"/>
+            <Setter Property="Width" Value="120"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#B91C1C"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#7F1D1D"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border BorderThickness="3" BorderBrush="#DC2626" CornerRadius="6" Padding="10">
+        <Grid Margin="10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>   <!-- Header -->
+                <RowDefinition Height="*"/>     <!-- Body -->
+                <RowDefinition Height="Auto"/>  <!-- Button -->
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <Border Grid.Row="0" Background="#DC2626" Padding="8" CornerRadius="4">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <TextBlock Text="⚠" FontSize="28" Foreground="White" Margin="0,0,8,0"/>
+                    <TextBlock Text="CRITICAL: Windows 10 Support Has Ended"
+                               FontSize="18"
+                               FontWeight="Bold"
+                               Foreground="White"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Message -->
+            <TextBlock Name="MessageText" Grid.Row="1"
+                       TextWrapping="Wrap"
+                       FontSize="15"
+                       FontWeight="SemiBold"
+                       LineHeight="22"
+                       TextAlignment="Center"
+                       Margin="15,20,15,10"
+                       Foreground="#3B0D0C"/>
+
+            <!-- Buttons -->
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,15,0,0">
+                <Button Name="DismissButton"
+                        Content="Dismiss"
+                        Style="{StaticResource HoverButtonStyle}"
+                        Margin="5"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>
+"@
+
+# Load XAML
+$reader = New-Object System.Xml.XmlNodeReader $XAML
+$Window = [Windows.Markup.XamlReader]::Load($reader)
+
+# Set message text
+$Window.FindName("MessageText").Text = $message
+
+# Hook up Dismiss button
+$DismissButton = $Window.FindName("DismissButton")
+$DismissButton.Add_Click({
+    $Window.Close()
+})
+
+# Show window
+$Window.ShowDialog()
+}
+# End of $Win10ScriptBlock
+################################################
+
+
+################################################
+# SCRIPT BLOCK 2 - $23H2ScriptBlock
+################################################
+
+$23H2ScriptBlock = {
+$message = "Your computer needs an update to stay secure and running smoothly.
+You can run the upgrade now, or use the self-service upgrade icon on your desktop at any time.    
+Please contact your IT provider if you need assistance."
+
+# Load WPF assemblies
+Add-Type -AssemblyName PresentationFramework
+
+# Define XAML with a Button style that changes background color on hover
+[xml]$XAML = @"
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Upgrade Required"
+        MinWidth="450" MinHeight="250"
+        WindowStartupLocation="CenterScreen"
+        Background="#FAFAFA"
+        Foreground="#222"
+        SizeToContent="WidthAndHeight"
+        Topmost="True"
+        ResizeMode="NoResize"
+        WindowStyle="None"
+        AllowsTransparency="False">
+    <Window.Resources>
+        <Style x:Key="HoverButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Gray"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="20,8"/>
+            <Setter Property="Width" Value="120"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#0078D4"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#00BCF2"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Background" Value="LightGray"/>
+                                <Setter Property="Foreground" Value="Gray"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+    <Border BorderThickness="2" BorderBrush="#0078D4" Padding="10">
+        <Grid Margin="10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>   <!-- Header -->
+                <RowDefinition Height="*"/>     <!-- Body -->
+                <RowDefinition Height="Auto"/>  <!-- Button -->
+            </Grid.RowDefinitions>
+            <!-- Header Row -->
+            <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,0,0,10">
+                <TextBlock Text="⚠" FontSize="26" Foreground="#DC2626" Margin="0,0,8,0"/>
+                <TextBlock Text="System Update Needed"
+                           FontSize="20" FontWeight="Bold"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+            <!-- Message -->
+            <TextBlock Name="MessageText" Grid.Row="1"
+                       TextWrapping="Wrap"
+                       FontSize="15"
+                       TextAlignment="Center"
+                       Margin="5"
+                       Foreground="Black"/>
+            <!-- Buttons -->
+            <StackPanel Grid.Row="2" Orientation="Horizontal"
+                        HorizontalAlignment="Center" Margin="0,15,0,0">
+                <Button Name="RunBatchButton" 
+                        Content="Update Now"
+                        Style="{StaticResource HoverButtonStyle}" 
+                        Margin="5"/>
+                <Button Name="DismissButton"
+                        Content="Dismiss"
+                        Style="{StaticResource HoverButtonStyle}"
+                        Margin="5"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>
+"@
+# Do not indent the previous line!
+
+# Load the XAML
+$reader = New-Object System.Xml.XmlNodeReader $XAML
+$Window = [Windows.Markup.XamlReader]::Load($reader)
+
+# Insert message dynamically
+$Window.FindName("MessageText").Text = $message
+
+# Get the Dismiss button and attach event
+$DismissButton = $Window.FindName("DismissButton")
+$DismissButton.Add_Click({
+    $Window.Close()
+})
+
+$RunBatchButton = $Window.FindName("RunBatchButton")
+$RunBatchButton.Add_Click({
+    Start-Process -FilePath "C:\Program Files\Green Mountain IT Solutions\Scripts\Windows24H2SelfServiceUpgrade.bat"
+})
+
+# Show window
+$Window.ShowDialog()
+
+}
+# End of $23H2ScriptBlock
+################################################
+
 # FUNCTIONS
 function Get-OSInfo { # https://gist.github.com/asheroto/cfa26dd00177a03c81635ea774406b2b
     <#
@@ -184,134 +426,15 @@ if ($osInfo.NumericVersion -eq "10") {
             Rmm-Alert -Category $AlertCategory -Body $AlertBody
         }
     
-# Display Warning Pop-up on Windows 10
-
-################################################
-# Start of RunAsUser $ScriptBlock
-
-$ScriptBlock = {
-$message = "This computer is running Windows 10, which reached End-of-Life on October 14, 2025.
-Running an operating system past its end-of-life date is a serious security risk.
-Please use the self-service upgrade icon on your desktop, if present,
-or contact your IT provider ASAP for assistance."
-
-# Load WPF assemblies
-Add-Type -AssemblyName PresentationFramework
-
-# Define XAML
-[xml]$XAML = @"
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Upgrade Required"
-        MinWidth="450" MinHeight="250"
-        WindowStartupLocation="CenterScreen"
-        Background="#FFF5F5"
-        Foreground="#111"
-        SizeToContent="WidthAndHeight"
-        Topmost="True"
-        ResizeMode="NoResize"
-        WindowStyle="None"
-        AllowsTransparency="False">
-
-    <Window.Resources>
-        <Style x:Key="HoverButtonStyle" TargetType="Button">
-            <Setter Property="Background" Value="#DC2626"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="FontSize" Value="15"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Padding" Value="20,8"/>
-            <Setter Property="Width" Value="120"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#B91C1C"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#7F1D1D"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-    </Window.Resources>
-
-    <Border BorderThickness="3" BorderBrush="#DC2626" CornerRadius="6" Padding="10">
-        <Grid Margin="10">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>   <!-- Header -->
-                <RowDefinition Height="*"/>     <!-- Body -->
-                <RowDefinition Height="Auto"/>  <!-- Button -->
-            </Grid.RowDefinitions>
-
-            <!-- Header -->
-            <Border Grid.Row="0" Background="#DC2626" Padding="8" CornerRadius="4">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center">
-                    <TextBlock Text="⚠" FontSize="28" Foreground="White" Margin="0,0,8,0"/>
-                    <TextBlock Text="CRITICAL: Windows 10 Support Has Ended"
-                               FontSize="18"
-                               FontWeight="Bold"
-                               Foreground="White"
-                               VerticalAlignment="Center"/>
-                </StackPanel>
-            </Border>
-
-            <!-- Message -->
-            <TextBlock Name="MessageText" Grid.Row="1"
-                       TextWrapping="Wrap"
-                       FontSize="15"
-                       FontWeight="SemiBold"
-                       LineHeight="22"
-                       TextAlignment="Center"
-                       Margin="15,20,15,10"
-                       Foreground="#3B0D0C"/>
-
-            <!-- Buttons -->
-            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,15,0,0">
-                <Button Name="DismissButton"
-                        Content="Dismiss"
-                        Style="{StaticResource HoverButtonStyle}"
-                        Margin="5"/>
-            </StackPanel>
-        </Grid>
-    </Border>
-</Window>
-"@
-
-# Load XAML
-$reader = New-Object System.Xml.XmlNodeReader $XAML
-$Window = [Windows.Markup.XamlReader]::Load($reader)
-
-# Set message text
-$Window.FindName("MessageText").Text = $message
-
-# Hook up Dismiss button
-$DismissButton = $Window.FindName("DismissButton")
-$DismissButton.Add_Click({
-    $Window.Close()
-})
-
-# Show window
-$Window.ShowDialog()
-}
-# End of RunAsUser $ScriptBlock
-################################################
-
+        # Display Windows 10 Warning Pop-Up
         if ($null -ne $env:SyncroModule) {
             Log-Activity -Message "Windows 10 End of Life alert was displayed." -EventName "Windows Upgrade Alert"
         }   
-        Invoke-AsCurrentUser -ScriptBlock $ScriptBlock -NoWait # Show the GUI Alert
+        Invoke-AsCurrentUser -ScriptBlock $Win10ScriptBlock -NoWait # Show the GUI Alert
 
     }
 
 }
-
 
 # Windows 11 Checks
 elseif ($osInfo.NumericVersion -eq "11") {
@@ -320,11 +443,22 @@ elseif ($osInfo.NumericVersion -eq "11") {
         if ($null -ne $env:SyncroModule) {
             Rmm-Alert -Category $AlertCategory -Body $AlertBody
         }    
-    }
+    }        
     else {
+        if ($currentBuild -eq "22631") { # Windows 11 23H2 warning
+            $is23H2 = $true
+        }
         Write-Host "This machine is running a supported operating system version."
         if ($null -ne $env:SyncroModule) {
             Close-Rmm-Alert -Category $AlertCategory -CloseAlertTicket "true"
         }
     }
+}
+
+# Display Warning for 23H2
+if ($is23H2) {
+        if ($null -ne $env:SyncroModule) {
+            Log-Activity -Message "Windows 23H2 upgrade alert was displayed." -EventName "Windows Upgrade Alert"
+        }   
+        Invoke-AsCurrentUser -ScriptBlock $23H2ScriptBlock -NoWait # Show the GUI Alert
 }
