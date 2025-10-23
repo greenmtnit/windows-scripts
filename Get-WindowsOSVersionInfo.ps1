@@ -149,7 +149,7 @@ $Window.ShowDialog()
 
 $23H2ScriptBlock = {
 $message = "Your computer needs an update to stay secure and running smoothly.
-You can run the upgrade now, or use the self-service upgrade icon on your desktop at any time.    
+You can run the update now, or use the self-service upgrade icon on your desktop at any time.    
 Please contact your IT provider if you need assistance."
 
 # Load WPF assemblies
@@ -256,6 +256,7 @@ $DismissButton.Add_Click({
 $RunBatchButton = $Window.FindName("RunBatchButton")
 $RunBatchButton.Add_Click({
     Start-Process -FilePath "C:\Program Files\Green Mountain IT Solutions\Scripts\Windows24H2SelfServiceUpgrade.bat"
+    $Window.Close()
 })
 
 # Show window
@@ -456,9 +457,29 @@ elseif ($osInfo.NumericVersion -eq "11") {
 }
 
 # Display Warning for 23H2
+# TODO
+<#
 if ($is23H2) {
+        # Download latest self-service batch script
+        $scriptURL = "https://raw.githubusercontent.com/greenmtnit/windows-scripts/refs/heads/main/Windows%2011%2024H2%20Self%20Service%20Upgrade/Windows24H2SelfServiceUpgrade.bat"
+        $scriptPath = "C:\Program Files\Green Mountain IT Solutions\Scripts\Windows24H2SelfServiceUpgrade.bat"
+
+        # Download the script
+        $ProgressPreference = "SilentlyContinue"
+        Remove-Item $scriptPath -ErrorAction SilentlyContinue # Delete if already exist
+        Try {
+            Write-Host "Downloading Windows24H2SelfServiceUpgrade.bat..."
+            Invoke-WebRequest -Uri $scriptURL -OutFile $scriptPath -ErrorAction Stop
+        } Catch {
+            Write-Host "ERROR: Failed to download the file."
+            Write-Host $_.Exception.Message
+            Exit 1
+        }
+
+        # Display Warning Pop-up
         if ($null -ne $env:SyncroModule) {
             Log-Activity -Message "Windows 23H2 upgrade alert was displayed." -EventName "Windows Upgrade Alert"
         }   
         Invoke-AsCurrentUser -ScriptBlock $23H2ScriptBlock -NoWait # Show the GUI Alert
 }
+#>

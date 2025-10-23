@@ -18,7 +18,7 @@ Import-Module $env:SyncroModule
 # TODO
 $shortcutPath = "C:\Users\Public\Desktop\Windows 11 24H2 Self Service Upgrade.lnk"
 $batchFilePath = "C:\Program Files\Green Mountain IT Solutions\Scripts\Windows24H2SelfServiceUpgrade.bat"
-$scriptURL = "https://raw.githubusercontent.com/greenmtnit/windows-scripts/refs/heads/main/Windows%2011%20Self%20Service%20Upgrade/Windows11SelfServiceUpgrade.bat"
+$scriptURL = "https://raw.githubusercontent.com/greenmtnit/windows-scripts/refs/heads/main/Windows%2011%2024H2%20Self%20Service%20Upgrade/Windows24H2SelfServiceUpgrade.bat"
 $scriptPath = "C:\Program Files\Green Mountain IT Solutions\Scripts\Windows24H2SelfServiceUpgrade.bat"
 $iconURL = "https://s3.us-east-1.wasabisys.com/gmits-public/Windows11Upgrade.ico"
 $iconPath = "C:\Program Files\Green Mountain IT Solutions\Scripts\Windows11Upgrade.ico"

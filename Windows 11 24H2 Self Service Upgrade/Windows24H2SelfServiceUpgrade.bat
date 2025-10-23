@@ -54,15 +54,15 @@ ECHO =============================================
 ECHO      Windows 11 Version 24H2 Upgrade
 ECHO =============================================
 ECHO.
-ECHO Your system will be upgraded to Windows 11 version 24H2. Please read the following before continuing:
+ECHO   Your system will be upgraded to Windows 11 version 24H2. Please read the following before continuing:  
 ECHO.
-ECHO 1) This process can take up to 2 hours. Your computer must stay on the entire time. You can continue to use the computer. If this is a laptop, keep it plugged in. Don't close the lid.
+ECHO   1) This process can take a while. Your computer must stay on the entire time. You can continue to use the computer. If this is a laptop, keep it plugged in. Don't close the lid.  
 ECHO.
-ECHO 2) A reboot is required when the upgrade finishes. You will receive a pop-up notification with a 30 minute warning of the reboot.
+ECHO   2) A reboot is required when the upgrade finishes. You will receive a pop-up notification with a 30 minute warning of the reboot.  
 ECHO.
-ECHO 3) The upgrade keeps all your files, applications, and settings, but there is always a small chance some unique setups may have issues. By proceeding, you confirm you understand the risks.
+ECHO   3) The upgrade keeps all your files, applications, and settings, but there is always a small chance some unique setups may have issues. By proceeding, you confirm you understand the risks.  
 ECHO.
-CHOICE /C YN /M "Press Y to confirm you have read and understood the above information, or N to cancel."
+CHOICE /C YN /M "  Press Y to confirm you have read and understood the above information, or N to cancel.  "
 IF ERRORLEVEL 2 (
     ECHO Upgrade cancelled by user.
     PAUSE
