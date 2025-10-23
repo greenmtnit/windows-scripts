@@ -1,0 +1,121 @@
+<#
+  Remove-Windows11SelfServiceUpgradeShortcut.ps1
+  
+  Cleanup script. Deletes the Windows 11 Self Service Upgrade shortcut created by Create-Windows11SelfServiceUpgradeShortcut.ps1.
+  
+  Only deletes the shortcut on machines on Windows 11, indicating the upgrade has completed successfully, or servers, where the shortcut should never have been created in the first place.
+  
+#>
+
+# FUNCTIONS
+function Get-OSInfo { # https://gist.github.com/asheroto/cfa26dd00177a03c81635ea774406b2b
+    <#
+        .SYNOPSIS
+        Retrieves detailed information about the operating system version and architecture.
+
+        .DESCRIPTION
+        This function queries both the Windows registry and the Win32_OperatingSystem class to gather comprehensive information about the operating system. It returns details such as the release ID, display version, name, type (Workstation/Server), numeric version, edition ID, version (object that includes major, minor, and build numbers), and architecture (OS architecture, not processor architecture).
+
+        .EXAMPLE
+        Get-OSInfo
+
+        This example retrieves the OS version details of the current system and returns an object with properties like ReleaseId, DisplayVersion, Name, Type, NumericVersion, EditionId, Version, and Architecture.
+
+        .EXAMPLE
+        (Get-OSInfo).Version.Major
+
+        This example retrieves the major version number of the operating system. The Get-OSInfo function returns an object with a Version property, which itself is an object containing Major, Minor, and Build properties. You can access these sub-properties using dot notation.
+
+        .EXAMPLE
+        $osDetails = Get-OSInfo
+        Write-Output "OS Name: $($osDetails.Name)"
+        Write-Output "OS Type: $($osDetails.Type)"
+        Write-Output "OS Architecture: $($osDetails.Architecture)"
+
+        This example stores the result of Get-OSInfo in a variable and then accesses various properties to print details about the operating system.
+    #>
+    [CmdletBinding()]
+    param ()
+
+    try {
+        # Get registry values
+        $registryValues = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion"
+        $releaseIdValue = $registryValues.ReleaseId
+        $displayVersionValue = $registryValues.DisplayVersion
+        $nameValue = $registryValues.ProductName
+        $editionIdValue = $registryValues.EditionId
+
+        # Strip out "Server" from the $editionIdValue if it exists
+        $editionIdValue = $editionIdValue -replace "Server", ""
+
+        # Get OS details using Get-CimInstance because the registry key for Name is not always correct with Windows 11
+        $osDetails = Get-CimInstance -ClassName Win32_OperatingSystem
+        $nameValue = $osDetails.Caption
+
+        # Get architecture details of the OS (not the processor)
+        $architecture = $osDetails.OSArchitecture
+
+        # Normalize architecture
+        if ($architecture -match "(?i)32") {
+            $architecture = "x32"
+        } elseif ($architecture -match "(?i)64" -and $architecture -match "(?i)ARM") {
+            $architecture = "ARM64"
+        } elseif ($architecture -match "(?i)64") {
+            $architecture = "x64"
+        } else {
+            $architecture = "Unknown"
+        }
+
+        # Get OS version details (as version object)
+        $versionValue = [System.Environment]::OSVersion.Version
+
+        # Determine product type
+        # Reference: https://learn.microsoft.com/en-us/dotnet/api/microsoft.powershell.commands.producttype?view=powershellsdk-1.1.0
+        if ($osDetails.ProductType -eq 1) {
+            $typeValue = "Workstation"
+        } elseif ($osDetails.ProductType -eq 2 -or $osDetails.ProductType -eq 3) {
+            $typeValue = "Server"
+        } else {
+            $typeValue = "Unknown"
+        }
+
+        # Extract numerical value from Name
+        $numericVersion = ($nameValue -replace "[^\d]").Trim()
+
+        # Create and return custom object with the required properties
+        $result = [PSCustomObject]@{
+            Name           = $nameValue
+            ReleaseId      = $releaseIdValue
+            DisplayVersion = $displayVersionValue
+            Type           = $typeValue
+            NumericVersion = $numericVersion
+            EditionId      = $editionIdValue
+            Version        = $versionValue
+            Architecture   = $architecture
+        }
+
+        return $result
+    } catch {
+        Write-Error "Unable to get OS version details.`nError: $_"
+        exit 1
+    }
+}
+
+# VARIABLES
+$shortcutPath = "C:\Users\Public\Desktop\Windows 11 Self Service Upgrade.lnk"
+
+# MAIN SCRIPT
+$osInfo = Get-OSInfo
+
+if (($osInfo.NumericVersion -eq "11") -or ($osInfo.Type -eq "Server")) { # On Windows 11 or a server - delete the self-service shortcut
+    if (Test-Path $shortcutPath) {
+        Remove-Item $shortcutPath -Force
+        Write-Host "Deleted shortcut."
+    }
+    else {
+        Write-Host "Shortcut does not exist; nothing to delete."
+    }
+}
+else {
+    Write-Host "Shortcut not deleted. Upgrade may still be needed.. OS is $($osInfo.Name) ($($osInfo.Type))."
+}

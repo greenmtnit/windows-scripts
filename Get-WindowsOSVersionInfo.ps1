@@ -16,12 +16,6 @@
 
 if ($null -ne $env:SyncroModule) { Import-Module $env:SyncroModule -DisableNameChecking }
 
-# FUNCTIONS
-function Check-Laptop {
-    $systemInfo = Get-CimInstance -ClassName Win32_ComputerSystem
-    return $systemInfo.PCSystemType -eq 2
-}
-
 # VARIABLES - CHANGE THESE 
 
 # Minimum Build Versions
@@ -275,6 +269,11 @@ $Window.ShowDialog()
 ################################################
 
 # FUNCTIONS
+function Check-Laptop {
+    $systemInfo = Get-CimInstance -ClassName Win32_ComputerSystem
+    return $systemInfo.PCSystemType -eq 2
+}
+
 function Get-OSInfo { # https://gist.github.com/asheroto/cfa26dd00177a03c81635ea774406b2b
     <#
         .SYNOPSIS
