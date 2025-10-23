@@ -6,13 +6,21 @@
   Also checks if Windows 10 or Windows 11 is running a supported version.
   If on an unsupported version, an RMM alert is generated in SyncroMSP.
   
-  If the script detects Windows 10, a GUI pop-up will be displayed to the currently logged in user advising them of the upcoming Windows 10 EoL.
+  If the script detects Windows 10, a GUI pop-up will be displayed to the currently logged in user advising them of Windows 10 EoL.
+  
+  If the script detects Windows 11 Version 23H2, a GUI pop-up will be displayed to the currently logged in user offering a self-service upgrade to the latest version.
   
   Thanks to https://gist.github.com/asheroto/cfa26dd00177a03c81635ea774406b2b for Get-OSInfo function
   
 #>
 
 if ($null -ne $env:SyncroModule) { Import-Module $env:SyncroModule -DisableNameChecking }
+
+# FUNCTIONS
+function Check-Laptop {
+    $systemInfo = Get-CimInstance -ClassName Win32_ComputerSystem
+    return $systemInfo.PCSystemType -eq 2
+}
 
 # VARIABLES - CHANGE THESE 
 
@@ -360,6 +368,20 @@ function Get-OSInfo { # https://gist.github.com/asheroto/cfa26dd00177a03c81635ea
     }
 }
 
+function Sleep-Random {
+    param (
+        [int]$MaximumSeconds = 300
+    )
+    if ($RandomDelay -eq "true") {
+        $RandomSleep = Get-Random -Maximum $MaximumSeconds
+        Write-Host "Sleeping for $RandomSleep seconds"
+        Start-Sleep -Seconds $RandomSleep
+    }
+    else {
+        Write-Host "Random delay is not enabled. Skipping sleep."
+    }
+}
+
 # INSTALL THE RUNASUSERMODULE
 
 # Check if the module is already installed 
@@ -430,7 +452,8 @@ if ($osInfo.NumericVersion -eq "10") {
         # Display Windows 10 Warning Pop-Up
         if ($null -ne $env:SyncroModule) {
             Log-Activity -Message "Windows 10 End of Life alert was displayed." -EventName "Windows Upgrade Alert"
-        }   
+        }
+        Sleep-Random
         Invoke-AsCurrentUser -ScriptBlock $Win10ScriptBlock -NoWait # Show the GUI Alert
 
     }
@@ -457,29 +480,37 @@ elseif ($osInfo.NumericVersion -eq "11") {
 }
 
 # Display Warning for 23H2
-# TODO
-<#
+
 if ($is23H2) {
-        # Download latest self-service batch script
-        $scriptURL = "https://raw.githubusercontent.com/greenmtnit/windows-scripts/refs/heads/main/Windows%2011%2024H2%20Self%20Service%20Upgrade/Windows24H2SelfServiceUpgrade.bat"
-        $scriptPath = "C:\Program Files\Green Mountain IT Solutions\Scripts\Windows24H2SelfServiceUpgrade.bat"
-
-        # Download the script
-        $ProgressPreference = "SilentlyContinue"
-        Remove-Item $scriptPath -ErrorAction SilentlyContinue # Delete if already exist
-        Try {
-            Write-Host "Downloading Windows24H2SelfServiceUpgrade.bat..."
-            Invoke-WebRequest -Uri $scriptURL -OutFile $scriptPath -ErrorAction Stop
-        } Catch {
-            Write-Host "ERROR: Failed to download the file."
-            Write-Host $_.Exception.Message
-            Exit 1
+        if (-not (Check-Laptop)) {
+            Write-Host "This system is not a laptop. Self-service upgrade will not be offered."
         }
+        else {
+            Write-Host "This system is a laptop on version 23H2. Self-service upgrade will be offered."
 
-        # Display Warning Pop-up
-        if ($null -ne $env:SyncroModule) {
-            Log-Activity -Message "Windows 23H2 upgrade alert was displayed." -EventName "Windows Upgrade Alert"
-        }   
-        Invoke-AsCurrentUser -ScriptBlock $23H2ScriptBlock -NoWait # Show the GUI Alert
+        
+            # Download latest self-service batch script
+            $scriptURL = "https://raw.githubusercontent.com/greenmtnit/windows-scripts/refs/heads/main/Windows%2011%2024H2%20Self%20Service%20Upgrade/Windows24H2SelfServiceUpgrade.bat"
+            $scriptPath = "C:\Program Files\Green Mountain IT Solutions\Scripts\Windows24H2SelfServiceUpgrade.bat"
+
+            # Download the script
+            $ProgressPreference = "SilentlyContinue"
+            Remove-Item $scriptPath -ErrorAction SilentlyContinue # Delete if already exist
+            Try {
+                Write-Host "Downloading Windows24H2SelfServiceUpgrade.bat..."
+                Invoke-WebRequest -Uri $scriptURL -OutFile $scriptPath -ErrorAction Stop
+            } Catch {
+                Write-Host "ERROR: Failed to download the file."
+                Write-Host $_.Exception.Message
+                Exit 1
+            }
+
+            # Display Warning Pop-up
+            if ($null -ne $env:SyncroModule) {
+                Log-Activity -Message "Windows 23H2 upgrade alert was displayed." -EventName "Windows Upgrade Alert"
+            }   
+            # Random Delay to avoid all users getting notified at the same time
+            Sleep-Random
+            Invoke-AsCurrentUser -ScriptBlock $23H2ScriptBlock -NoWait # Show the GUI Alert
+        }
 }
-#>
