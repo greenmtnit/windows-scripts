@@ -431,6 +431,9 @@ $currentDisplayVersion = $OSInfo.DisplayVersion
 $AlertCategory = "Windows OS Version"
 $AlertBody = "This machine is running an unsupported operating system build version: $currentName $currentDisplayVersion . You should upgrade to the latest."
 
+if ($ShowGUIAlerts -ne "true") {
+    Write-Host "NOTICE: ShowGUIAlerts is not set to true. GUI Alerts will not be shown"
+}
 
 # Windows 10 Checks
 if ($osInfo.NumericVersion -eq "10") {
@@ -449,14 +452,14 @@ if ($osInfo.NumericVersion -eq "10") {
         }
     
         # Display Windows 10 Warning Pop-Up
-        if ($null -ne $env:SyncroModule) {
-            Log-Activity -Message "Windows 10 End of Life alert was displayed." -EventName "Windows Upgrade Alert"
+        if ($ShowGUIAlerts -eq "true") {
+            if ($null -ne $env:SyncroModule) {
+                Log-Activity -Message "Windows 10 End of Life alert was displayed." -EventName "Windows Upgrade Alert"
+            }
+            Sleep-Random
+                Invoke-AsCurrentUser -ScriptBlock $Win10ScriptBlock -NoWait # Show the GUI Alert
         }
-        Sleep-Random
-        Invoke-AsCurrentUser -ScriptBlock $Win10ScriptBlock -NoWait # Show the GUI Alert
-
     }
-
 }
 
 # Windows 11 Checks
@@ -480,7 +483,7 @@ elseif ($osInfo.NumericVersion -eq "11") {
 
 # Display Warning for 23H2
 
-if ($is23H2) {
+if (($is23H2) -and ($ShowGUIAlerts -eq "true")) {
         if (-not (Check-Laptop)) {
             Write-Host "This system is not a laptop. Self-service upgrade will not be offered."
         }
