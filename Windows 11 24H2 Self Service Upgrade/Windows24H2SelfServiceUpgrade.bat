@@ -135,4 +135,4 @@ TIMEOUT /T 10 >NUL
 
 REM ===== Run the Windows 11 Installation Assistant silently =====
 ECHO Starting install...
-START "" "%FILE%" /SkipEULA /Auto Upgrade /CopyLogs "%WORKDIR%"
+START "" "%FILE%" /SkipEULA /SkipCompatCheck /Auto Upgrade /CopyLogs "%WORKDIR%"
