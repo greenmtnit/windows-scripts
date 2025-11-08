@@ -516,12 +516,205 @@ $outObject | ConvertTo-Json -Compress
 # ===========================================
 #  BEGIN CUSTOMIZATIONS FOR SYNCRO
 # =========================================== 
-
 Import-Module $env:SyncroModule
+
+# Function to set reg key for all users
+# We'll use this to set HKCU\Software\Microsoft\PCHC -> UpgradeEligibility = 1 for all users
+function Set-HKCUAllUsersRegistryValue {
+    <#
+    .SYNOPSIS
+        Sets or updates a registry value under HKEY_CURRENT_USER for all current and future users on the local machine.
+
+    .DESCRIPTION
+        This function modifies registry keys and values under HKCU for all user profiles currently on the machine and/or for future user profiles 
+        (by updating the Default user hive). It supports setting any registry path, value name, value data, and type, with options to overwrite 
+        existing values or skip them. It also provides an optional backup of affected registry hives before modification.
+
+    .PARAMETER SubKeyPath
+        The relative registry path under HKCU where the value will be created or updated for each user. For example: "Software\Microsoft\PCHC".
+
+    .PARAMETER ValueName
+        The name of the registry value to set.
+
+    .PARAMETER ValueData
+        The data to assign to the registry value.
+
+    .PARAMETER ValueType
+        The type of the registry value. Valid options: String, ExpandString, DWord, QWord, Binary, MultiString.
+
+    .PARAMETER Force
+        Switch to overwrite existing registry values. If not specified and the value exists, it will be skipped.
+
+    .PARAMETER NoBackup
+        Switch to disable backing up each user hive before modification. By default, backup is enabled.
+
+    .PARAMETER BackupPath
+        The folder path where registry backups will be stored. Default is "C:\Windows\Temp\RegistryBackups".
+
+    .PARAMETER ModifyExistingUsers
+        Switch to enable modifying all existing user profile registry hives. Default is enabled.
+
+    .PARAMETER ModifyFutureUsers
+        Switch to enable modifying the Default user hive (which affects future new user profiles). Default is enabled.
+
+    .EXAMPLE
+        Set-HKCUAllUsersRegistryValue -SubKeyPath "Software\MyApp" -ValueName "Enabled" -ValueData 1 -ValueType DWord -Force
+
+        Updates or creates the DWORD registry value "Enabled" with data 1 under HKCU\Software\MyApp for all current and future users,
+        overwriting existing values and backing up hives before modification.
+
+    .EXAMPLE
+        Set-HKCUAllUsersRegistryValue `
+            -SubKeyPath "Software\ContosoApp" `
+            -ValueName "UserPreference" `
+            -ValueData "DarkMode" `
+            -ValueType String `
+            -ModifyFutureUsers:$false `
+            -Verbose
+            
+        Set a string registry value for all current users only, without modifying future user profiles,
+        and without forcing overwrite if the value already exists (no $Force).
+
+    .NOTES
+        - Requires administrative privileges to load/unload user hives.
+        - Only modifies local, domain, and Azure AD user profiles, avoiding system accounts.
+        - Uses built-in support (SupportsShouldProcess) for -WhatIf and -Confirm via CmdletBinding.
+
+    .LINK
+        None
+    #>
+    
+    [CmdletBinding(SupportsShouldProcess)]
+    param(
+        [Parameter(Mandatory)]
+        [string]$SubKeyPath,  # e.g. "Software\Microsoft\PCHC"
+
+        [Parameter(Mandatory)]
+        [string]$ValueName,   # e.g. "UpgradeEligibility"
+
+        [Parameter(Mandatory)]
+        [string]$ValueData,   # e.g. 1
+
+        [Parameter(Mandatory)]
+        [ValidateSet('String','ExpandString','DWord','QWord','Binary','MultiString')]
+        [string]$ValueType,
+
+        [switch]$Force,                   # Overwrite existing values
+        [switch]$NoBackup,                # Disable registry backup
+        [string]$BackupPath = "C:\Windows\Temp\RegistryBackups",
+
+        [switch]$ModifyExistingUsers = $true,
+        [switch]$ModifyFutureUsers = $true
+    )
+
+    Write-Verbose "Starting Set-HKCUAllUsersRegistryValue for $SubKeyPath\$ValueName"
+
+    # Define regex to match only desired SIDs. This matches local, domain, and Azure AD (Entra) users.
+    # It will not match system or built-in users.
+    #   S-1-5-21 = local or domain user
+    #   S-1-12-1 = Azure AD user
+    $PatternSID = 'S-1-(5-21|12-1)-\d+-\d+-\d+-\d+$'
+
+    if (-not $NoBackup) {
+        if (-not (Test-Path $BackupPath)) { New-Item -ItemType Directory -Path $BackupPath | Out-Null }
+    }
+
+    function Backup-Hive ($RootPath, $Username) {
+        if (-not $NoBackup) {
+            $BackupFile = Join-Path $BackupPath "$($Username)_$(Get-Date -Format 'yyyyMMdd_HHmmss').regbak"
+            Write-Verbose "Backing up $RootPath to $BackupFile"
+            # Use full path for REG.EXE export
+            reg export $RootPath $BackupFile /y | Out-Null 2>&1
+        }
+    }
+    
+    function Backup-NTUserDat ($UserHivePath, $Username) {
+        if (-not $NoBackup) {
+            $BackupFile = Join-Path $BackupPath "$($Username)_NTUSER_$(Get-Date -Format 'yyyyMMdd_HHmmss').dat"
+            Write-Verbose "Backing up NTUSER.DAT for $Username to $BackupFile"
+            Copy-Item -Path $UserHivePath -Destination $BackupFile -Force
+        }
+    }
+
+    function Set-RegistryValueForHive($RootPath, $Username) {
+        $TargetRegPath = Join-Path $RootPath $SubKeyPath
+        if (-not (Test-Path $TargetRegPath)) { New-Item -Path $TargetRegPath -Force | Out-Null }
+        
+        $existing = Get-ItemProperty -Path $TargetRegPath -Name $ValueName -ErrorAction SilentlyContinue
+        if ($existing -and -not $Force) {
+            Write-Verbose "Skipping $Username, value already exists and -Force not specified."
+        } else {
+            Write-Verbose "Setting $TargetRegPath\$ValueName => $ValueData"
+            New-ItemProperty -Path $TargetRegPath -Name $ValueName -Value $ValueData -PropertyType $ValueType -Force | Out-Null
+        }
+    }
+
+    if ($ModifyExistingUsers) {
+        Write-Verbose "Modifying existing users' hives..."
+        $ProfileList = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\*' |
+            Where-Object { $_.PSChildName -match $PatternSID } |
+            Select-Object @{Name="SID"; Expression={ $_.PSChildName }},
+                          @{Name="HivePath"; Expression={ "$($_.ProfileImagePath)\NTUSER.DAT" }},
+                          @{Name="Username"; Expression={ Split-Path $_.ProfileImagePath -Leaf }}
+
+        $LoadedHives = Get-ChildItem -Path Registry::HKEY_USERS |
+            Where-Object { $_.PSChildName -match $PatternSID } |
+            Select-Object -ExpandProperty PSChildName
+
+        foreach ($User in $ProfileList) {
+            $HiveWasLoaded = $true
+            if ($User.SID -notin $LoadedHives) {
+                Write-Verbose "Loading hive for $($User.Username)"
+                reg load "HKU\$($User.SID)" $User.HivePath | Out-Null
+                $HiveWasLoaded = $false
+            }
+
+            Backup-Hive "HKU\$($User.SID)" $User.Username
+            Set-RegistryValueForHive "Registry::HKEY_USERS\$($User.SID)" $User.Username
+
+            if (-not $HiveWasLoaded) {
+                [gc]::Collect()
+                reg unload "HKU\$($User.SID)" | Out-Null
+            }
+        }
+    }
+
+    if ($ModifyFutureUsers) {
+        Write-Verbose "Backing up Default User NTUSER.DAT"
+        Backup-NTUserDat "C:\Users\Default\NTUSER.DAT" "DefaultUser"
+        
+        Write-Verbose "Modifying Default User hive for future users..."
+        $TempHive = "HKLM\TempDefaultUser"
+        $NTUserDat = "C:\Users\Default\NTUSER.DAT"
+
+        reg load $TempHive $NTUserDat | Out-Null
+
+        $DefaultRegPath = "Registry::HKEY_LOCAL_MACHINE\TempDefaultUser\$SubKeyPath"
+        if (-not (Test-Path $DefaultRegPath)) { New-Item -Path $DefaultRegPath -Force | Out-Null }
+
+        Backup-Hive "HKLM\TempDefaultUser" "DefaultUser"
+        Set-RegistryValueForHive "Registry::HKEY_LOCAL_MACHINE\TempDefaultUser" "DefaultUser"
+
+        [gc]::Collect()
+        [gc]::WaitForPendingFinalizers()
+        reg unload $TempHive | Out-Null
+    }
+
+    Write-Verbose "Completed registry modifications."
+}
 
 If (-Not $outObject.returnCode) {
   Write-Host "This system DOES support Windows 11"
   $SupportsWindows11="Yes"
+  Write-Host "Setting UpgradeEligibility registry value for all users"
+  # Set HKCU\Software\Microsoft\PCHC -> UpgradeEligibility = 1 for all users
+  # Prevents Update Assistant from requiring PC Health Check app to run.
+  Set-HKCUAllUsersRegistryValue `
+  -SubKeyPath "Software\Microsoft\PCHC" `
+  -ValueName "UpgradeEligibility" `
+  -ValueData 1 `
+  -ValueType DWord `
+  -Force `
 }
 Elseif ($outObject.returnCode -ge 1) {
   Write-Host "This system does NOT support Windows 11. Reason: $reason"
@@ -533,196 +726,3 @@ Else {
 }
 
 Set-Asset-Field -Name "SupportsWindows11" -Value $SupportsWindows11
-
-# SIG # Begin signature block
-# MIIjgwYJKoZIhvcNAQcCoIIjdDCCI3ACAQExDzANBglghkgBZQMEAgEFADB5Bgor
-# BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCBiHhm0Lk+/A8qC
-# V96ruzLc51r2jcv0Tmi4ylIArUm6AaCCDYEwggX/MIID56ADAgECAhMzAAACUosz
-# qviV8znbAAAAAAJSMA0GCSqGSIb3DQEBCwUAMH4xCzAJBgNVBAYTAlVTMRMwEQYD
-# VQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4wHAYDVQQKExVNaWNy
-# b3NvZnQgQ29ycG9yYXRpb24xKDAmBgNVBAMTH01pY3Jvc29mdCBDb2RlIFNpZ25p
-# bmcgUENBIDIwMTEwHhcNMjEwOTAyMTgzMjU5WhcNMjIwOTAxMTgzMjU5WjB0MQsw
-# CQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9u
-# ZDEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9uMR4wHAYDVQQDExVNaWNy
-# b3NvZnQgQ29ycG9yYXRpb24wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIB
-# AQDQ5M+Ps/X7BNuv5B/0I6uoDwj0NJOo1KrVQqO7ggRXccklyTrWL4xMShjIou2I
-# sbYnF67wXzVAq5Om4oe+LfzSDOzjcb6ms00gBo0OQaqwQ1BijyJ7NvDf80I1fW9O
-# L76Kt0Wpc2zrGhzcHdb7upPrvxvSNNUvxK3sgw7YTt31410vpEp8yfBEl/hd8ZzA
-# v47DCgJ5j1zm295s1RVZHNp6MoiQFVOECm4AwK2l28i+YER1JO4IplTH44uvzX9o
-# RnJHaMvWzZEpozPy4jNO2DDqbcNs4zh7AWMhE1PWFVA+CHI/En5nASvCvLmuR/t8
-# q4bc8XR8QIZJQSp+2U6m2ldNAgMBAAGjggF+MIIBejAfBgNVHSUEGDAWBgorBgEE
-# AYI3TAgBBggrBgEFBQcDAzAdBgNVHQ4EFgQUNZJaEUGL2Guwt7ZOAu4efEYXedEw
-# UAYDVR0RBEkwR6RFMEMxKTAnBgNVBAsTIE1pY3Jvc29mdCBPcGVyYXRpb25zIFB1
-# ZXJ0byBSaWNvMRYwFAYDVQQFEw0yMzAwMTIrNDY3NTk3MB8GA1UdIwQYMBaAFEhu
-# ZOVQBdOCqhc3NyK1bajKdQKVMFQGA1UdHwRNMEswSaBHoEWGQ2h0dHA6Ly93d3cu
-# bWljcm9zb2Z0LmNvbS9wa2lvcHMvY3JsL01pY0NvZFNpZ1BDQTIwMTFfMjAxMS0w
-# Ny0wOC5jcmwwYQYIKwYBBQUHAQEEVTBTMFEGCCsGAQUFBzAChkVodHRwOi8vd3d3
-# Lm1pY3Jvc29mdC5jb20vcGtpb3BzL2NlcnRzL01pY0NvZFNpZ1BDQTIwMTFfMjAx
-# MS0wNy0wOC5jcnQwDAYDVR0TAQH/BAIwADANBgkqhkiG9w0BAQsFAAOCAgEAFkk3
-# uSxkTEBh1NtAl7BivIEsAWdgX1qZ+EdZMYbQKasY6IhSLXRMxF1B3OKdR9K/kccp
-# kvNcGl8D7YyYS4mhCUMBR+VLrg3f8PUj38A9V5aiY2/Jok7WZFOAmjPRNNGnyeg7
-# l0lTiThFqE+2aOs6+heegqAdelGgNJKRHLWRuhGKuLIw5lkgx9Ky+QvZrn/Ddi8u
-# TIgWKp+MGG8xY6PBvvjgt9jQShlnPrZ3UY8Bvwy6rynhXBaV0V0TTL0gEx7eh/K1
-# o8Miaru6s/7FyqOLeUS4vTHh9TgBL5DtxCYurXbSBVtL1Fj44+Od/6cmC9mmvrti
-# yG709Y3Rd3YdJj2f3GJq7Y7KdWq0QYhatKhBeg4fxjhg0yut2g6aM1mxjNPrE48z
-# 6HWCNGu9gMK5ZudldRw4a45Z06Aoktof0CqOyTErvq0YjoE4Xpa0+87T/PVUXNqf
-# 7Y+qSU7+9LtLQuMYR4w3cSPjuNusvLf9gBnch5RqM7kaDtYWDgLyB42EfsxeMqwK
-# WwA+TVi0HrWRqfSx2olbE56hJcEkMjOSKz3sRuupFCX3UroyYf52L+2iVTrda8XW
-# esPG62Mnn3T8AuLfzeJFuAbfOSERx7IFZO92UPoXE1uEjL5skl1yTZB3MubgOA4F
-# 8KoRNhviFAEST+nG8c8uIsbZeb08SeYQMqjVEmkwggd6MIIFYqADAgECAgphDpDS
-# AAAAAAADMA0GCSqGSIb3DQEBCwUAMIGIMQswCQYDVQQGEwJVUzETMBEGA1UECBMK
-# V2FzaGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0
-# IENvcnBvcmF0aW9uMTIwMAYDVQQDEylNaWNyb3NvZnQgUm9vdCBDZXJ0aWZpY2F0
-# ZSBBdXRob3JpdHkgMjAxMTAeFw0xMTA3MDgyMDU5MDlaFw0yNjA3MDgyMTA5MDla
-# MH4xCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdS
-# ZWRtb25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xKDAmBgNVBAMT
-# H01pY3Jvc29mdCBDb2RlIFNpZ25pbmcgUENBIDIwMTEwggIiMA0GCSqGSIb3DQEB
-# AQUAA4ICDwAwggIKAoICAQCr8PpyEBwurdhuqoIQTTS68rZYIZ9CGypr6VpQqrgG
-# OBoESbp/wwwe3TdrxhLYC/A4wpkGsMg51QEUMULTiQ15ZId+lGAkbK+eSZzpaF7S
-# 35tTsgosw6/ZqSuuegmv15ZZymAaBelmdugyUiYSL+erCFDPs0S3XdjELgN1q2jz
-# y23zOlyhFvRGuuA4ZKxuZDV4pqBjDy3TQJP4494HDdVceaVJKecNvqATd76UPe/7
-# 4ytaEB9NViiienLgEjq3SV7Y7e1DkYPZe7J7hhvZPrGMXeiJT4Qa8qEvWeSQOy2u
-# M1jFtz7+MtOzAz2xsq+SOH7SnYAs9U5WkSE1JcM5bmR/U7qcD60ZI4TL9LoDho33
-# X/DQUr+MlIe8wCF0JV8YKLbMJyg4JZg5SjbPfLGSrhwjp6lm7GEfauEoSZ1fiOIl
-# XdMhSz5SxLVXPyQD8NF6Wy/VI+NwXQ9RRnez+ADhvKwCgl/bwBWzvRvUVUvnOaEP
-# 6SNJvBi4RHxF5MHDcnrgcuck379GmcXvwhxX24ON7E1JMKerjt/sW5+v/N2wZuLB
-# l4F77dbtS+dJKacTKKanfWeA5opieF+yL4TXV5xcv3coKPHtbcMojyyPQDdPweGF
-# RInECUzF1KVDL3SV9274eCBYLBNdYJWaPk8zhNqwiBfenk70lrC8RqBsmNLg1oiM
-# CwIDAQABo4IB7TCCAekwEAYJKwYBBAGCNxUBBAMCAQAwHQYDVR0OBBYEFEhuZOVQ
-# BdOCqhc3NyK1bajKdQKVMBkGCSsGAQQBgjcUAgQMHgoAUwB1AGIAQwBBMAsGA1Ud
-# DwQEAwIBhjAPBgNVHRMBAf8EBTADAQH/MB8GA1UdIwQYMBaAFHItOgIxkEO5FAVO
-# 4eqnxzHRI4k0MFoGA1UdHwRTMFEwT6BNoEuGSWh0dHA6Ly9jcmwubWljcm9zb2Z0
-# LmNvbS9wa2kvY3JsL3Byb2R1Y3RzL01pY1Jvb0NlckF1dDIwMTFfMjAxMV8wM18y
-# Mi5jcmwwXgYIKwYBBQUHAQEEUjBQME4GCCsGAQUFBzAChkJodHRwOi8vd3d3Lm1p
-# Y3Jvc29mdC5jb20vcGtpL2NlcnRzL01pY1Jvb0NlckF1dDIwMTFfMjAxMV8wM18y
-# Mi5jcnQwgZ8GA1UdIASBlzCBlDCBkQYJKwYBBAGCNy4DMIGDMD8GCCsGAQUFBwIB
-# FjNodHRwOi8vd3d3Lm1pY3Jvc29mdC5jb20vcGtpb3BzL2RvY3MvcHJpbWFyeWNw
-# cy5odG0wQAYIKwYBBQUHAgIwNB4yIB0ATABlAGcAYQBsAF8AcABvAGwAaQBjAHkA
-# XwBzAHQAYQB0AGUAbQBlAG4AdAAuIB0wDQYJKoZIhvcNAQELBQADggIBAGfyhqWY
-# 4FR5Gi7T2HRnIpsLlhHhY5KZQpZ90nkMkMFlXy4sPvjDctFtg/6+P+gKyju/R6mj
-# 82nbY78iNaWXXWWEkH2LRlBV2AySfNIaSxzzPEKLUtCw/WvjPgcuKZvmPRul1LUd
-# d5Q54ulkyUQ9eHoj8xN9ppB0g430yyYCRirCihC7pKkFDJvtaPpoLpWgKj8qa1hJ
-# Yx8JaW5amJbkg/TAj/NGK978O9C9Ne9uJa7lryft0N3zDq+ZKJeYTQ49C/IIidYf
-# wzIY4vDFLc5bnrRJOQrGCsLGra7lstnbFYhRRVg4MnEnGn+x9Cf43iw6IGmYslmJ
-# aG5vp7d0w0AFBqYBKig+gj8TTWYLwLNN9eGPfxxvFX1Fp3blQCplo8NdUmKGwx1j
-# NpeG39rz+PIWoZon4c2ll9DuXWNB41sHnIc+BncG0QaxdR8UvmFhtfDcxhsEvt9B
-# xw4o7t5lL+yX9qFcltgA1qFGvVnzl6UJS0gQmYAf0AApxbGbpT9Fdx41xtKiop96
-# eiL6SJUfq/tHI4D1nvi/a7dLl+LrdXga7Oo3mXkYS//WsyNodeav+vyL6wuA6mk7
-# r/ww7QRMjt/fdW1jkT3RnVZOT7+AVyKheBEyIXrvQQqxP/uozKRdwaGIm1dxVk5I
-# RcBCyZt2WwqASGv9eZ/BvW1taslScxMNelDNMYIVWDCCFVQCAQEwgZUwfjELMAkG
-# A1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQx
-# HjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEoMCYGA1UEAxMfTWljcm9z
-# b2Z0IENvZGUgU2lnbmluZyBQQ0EgMjAxMQITMwAAAlKLM6r4lfM52wAAAAACUjAN
-# BglghkgBZQMEAgEFAKCBrjAZBgkqhkiG9w0BCQMxDAYKKwYBBAGCNwIBBDAcBgor
-# BgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAvBgkqhkiG9w0BCQQxIgQgDitXJ5WN
-# blV7Vpa8S/1rP1RiKAYCi9M7QPX4/HQ3y4cwQgYKKwYBBAGCNwIBDDE0MDKgFIAS
-# AE0AaQBjAHIAbwBzAG8AZgB0oRqAGGh0dHA6Ly93d3cubWljcm9zb2Z0LmNvbTAN
-# BgkqhkiG9w0BAQEFAASCAQDJnb0Gp/dxyc1nlHUducMqatVAd89yxAodlVziyyKO
-# +Y+vimn+0UH+eKuz0QINAL+TtbZBtbmhmtwv71H1D7j0Nc5M4YXe5kTtgHttYTcw
-# vqF9LIlIDOf0A/v7NoUTb5rTtgpi4xOOfY2RIDW3THTMeazZbAqA/5bUzD4v0sq6
-# HQp+FvdVbrA+f88mgiKiWZEroIdfpug92JYa2+7B49CzcyqePj4Rq0qOZfZZZTHj
-# Du5b7SSTc//pSV7vJxs3FMtuv1IJ8aVylAiocfiy0zQePiGINfEOdvMga/wm231s
-# O4QPSkEYOaocbbonuoGc7i5vzDuLgNFkvFKQ6HFmaXtNoYIS4jCCEt4GCisGAQQB
-# gjcDAwExghLOMIISygYJKoZIhvcNAQcCoIISuzCCErcCAQMxDzANBglghkgBZQME
-# AgEFADCCAVEGCyqGSIb3DQEJEAEEoIIBQASCATwwggE4AgEBBgorBgEEAYRZCgMB
-# MDEwDQYJYIZIAWUDBAIBBQAEIMi6knq2c/5TFRmh2ovvKUeL0O+wObeRcMIt3jix
-# W5NpAgZhkuFbwjYYEzIwMjExMTI5MTkzODIwLjk3MVowBIACAfSggdCkgc0wgcox
-# CzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRt
-# b25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xJTAjBgNVBAsTHE1p
-# Y3Jvc29mdCBBbWVyaWNhIE9wZXJhdGlvbnMxJjAkBgNVBAsTHVRoYWxlcyBUU1Mg
-# RVNOOjNFN0EtRTM1OS1BMjVEMSUwIwYDVQQDExxNaWNyb3NvZnQgVGltZS1TdGFt
-# cCBTZXJ2aWNloIIOOTCCBPEwggPZoAMCAQICEzMAAAFSMEtdiazmcEcAAAAAAVIw
-# DQYJKoZIhvcNAQELBQAwfDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0
-# b24xEDAOBgNVBAcTB1JlZG1vbmQxHjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3Jh
-# dGlvbjEmMCQGA1UEAxMdTWljcm9zb2Z0IFRpbWUtU3RhbXAgUENBIDIwMTAwHhcN
-# MjAxMTEyMTgyNjA1WhcNMjIwMjExMTgyNjA1WjCByjELMAkGA1UEBhMCVVMxEzAR
-# BgNVBAgTCldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQxHjAcBgNVBAoTFU1p
-# Y3Jvc29mdCBDb3Jwb3JhdGlvbjElMCMGA1UECxMcTWljcm9zb2Z0IEFtZXJpY2Eg
-# T3BlcmF0aW9uczEmMCQGA1UECxMdVGhhbGVzIFRTUyBFU046M0U3QS1FMzU5LUEy
-# NUQxJTAjBgNVBAMTHE1pY3Jvc29mdCBUaW1lLVN0YW1wIFNlcnZpY2UwggEiMA0G
-# CSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCuzG6EiZh0taCSbswMiupMTYnbboFz
-# jj1DuDbbvT0RXKBCVl/umA+Uy214DmHiFhkeuRdlLB0ya5S9um5aKr7lBBqZzvtK
-# gGNgCRbDTG9Yu6kzDzPTzQRulVIvoWVy0gITnEyoJ1O3m5IPpsLBNQCdXsh+3TZF
-# 73JAcub21bnxm/4sxe4zTdbdttBrqX8/JJF2VEnAP+MBvF2UQSo6XUAaTKC/HPDP
-# Cce/IsNoAxxLDI1wHhIlqjRBnt4HM5HcKHrZrvH+vHnihikdlEzh3fjQFowk1fG7
-# PVhmO60O5vVdqA+H9314hHENQI0cbo+SkSi8SSJSLNixgj0eWePTh7pbAgMBAAGj
-# ggEbMIIBFzAdBgNVHQ4EFgQUhN2u2qwj1l2c2h/kULDuBRJsexQwHwYDVR0jBBgw
-# FoAU1WM6XIoxkPNDe3xGG8UzaFqFbVUwVgYDVR0fBE8wTTBLoEmgR4ZFaHR0cDov
-# L2NybC5taWNyb3NvZnQuY29tL3BraS9jcmwvcHJvZHVjdHMvTWljVGltU3RhUENB
-# XzIwMTAtMDctMDEuY3JsMFoGCCsGAQUFBwEBBE4wTDBKBggrBgEFBQcwAoY+aHR0
-# cDovL3d3dy5taWNyb3NvZnQuY29tL3BraS9jZXJ0cy9NaWNUaW1TdGFQQ0FfMjAx
-# MC0wNy0wMS5jcnQwDAYDVR0TAQH/BAIwADATBgNVHSUEDDAKBggrBgEFBQcDCDAN
-# BgkqhkiG9w0BAQsFAAOCAQEAVcUncfFqSazQbDEXf3d10/upiWQU5HdTbwG9v9be
-# VIDaG4oELyIcNE6e6CbOBMlPU+smpYYcnK3jucNqChwquLmxdi2iPy4iQ6vjAdBp
-# 9+VFWlrBqUsNXZzjCpgMCZj6bu8Xq0Nndl4WyBbI0Jku68vUNG4wsMdKP3dz+1Mz
-# k9SUma3j7HyNA559do9nhKmoZMn5dtf03QvxlaEwMAaPk9xuUv9BN8cNvFnpWk4m
-# LERQW6tA3rXK0soEISKTYG7Ose7oMXZDYPWxf9oFhYKzZw/SwnhdBoj2S5eyYE3A
-# uF/ZXzR3hdp3/XGzZeOdERfFy1rC7ZBwhDIajeFMi53GnzCCBnEwggRZoAMCAQIC
-# CmEJgSoAAAAAAAIwDQYJKoZIhvcNAQELBQAwgYgxCzAJBgNVBAYTAlVTMRMwEQYD
-# VQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4wHAYDVQQKExVNaWNy
-# b3NvZnQgQ29ycG9yYXRpb24xMjAwBgNVBAMTKU1pY3Jvc29mdCBSb290IENlcnRp
-# ZmljYXRlIEF1dGhvcml0eSAyMDEwMB4XDTEwMDcwMTIxMzY1NVoXDTI1MDcwMTIx
-# NDY1NVowfDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNV
-# BAcTB1JlZG1vbmQxHjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEmMCQG
-# A1UEAxMdTWljcm9zb2Z0IFRpbWUtU3RhbXAgUENBIDIwMTAwggEiMA0GCSqGSIb3
-# DQEBAQUAA4IBDwAwggEKAoIBAQCpHQ28dxGKOiDs/BOX9fp/aZRrdFQQ1aUKAIKF
-# ++18aEssX8XD5WHCdrc+Zitb8BVTJwQxH0EbGpUdzgkTjnxhMFmxMEQP8WCIhFRD
-# DNdNuDgIs0Ldk6zWczBXJoKjRQ3Q6vVHgc2/JGAyWGBG8lhHhjKEHnRhZ5FfgVSx
-# z5NMksHEpl3RYRNuKMYa+YaAu99h/EbBJx0kZxJyGiGKr0tkiVBisV39dx898Fd1
-# rL2KQk1AUdEPnAY+Z3/1ZsADlkR+79BL/W7lmsqxqPJ6Kgox8NpOBpG2iAg16Hgc
-# sOmZzTznL0S6p/TcZL2kAcEgCZN4zfy8wMlEXV4WnAEFTyJNAgMBAAGjggHmMIIB
-# 4jAQBgkrBgEEAYI3FQEEAwIBADAdBgNVHQ4EFgQU1WM6XIoxkPNDe3xGG8UzaFqF
-# bVUwGQYJKwYBBAGCNxQCBAweCgBTAHUAYgBDAEEwCwYDVR0PBAQDAgGGMA8GA1Ud
-# EwEB/wQFMAMBAf8wHwYDVR0jBBgwFoAU1fZWy4/oolxiaNE9lJBb186aGMQwVgYD
-# VR0fBE8wTTBLoEmgR4ZFaHR0cDovL2NybC5taWNyb3NvZnQuY29tL3BraS9jcmwv
-# cHJvZHVjdHMvTWljUm9vQ2VyQXV0XzIwMTAtMDYtMjMuY3JsMFoGCCsGAQUFBwEB
-# BE4wTDBKBggrBgEFBQcwAoY+aHR0cDovL3d3dy5taWNyb3NvZnQuY29tL3BraS9j
-# ZXJ0cy9NaWNSb29DZXJBdXRfMjAxMC0wNi0yMy5jcnQwgaAGA1UdIAEB/wSBlTCB
-# kjCBjwYJKwYBBAGCNy4DMIGBMD0GCCsGAQUFBwIBFjFodHRwOi8vd3d3Lm1pY3Jv
-# c29mdC5jb20vUEtJL2RvY3MvQ1BTL2RlZmF1bHQuaHRtMEAGCCsGAQUFBwICMDQe
-# MiAdAEwAZQBnAGEAbABfAFAAbwBsAGkAYwB5AF8AUwB0AGEAdABlAG0AZQBuAHQA
-# LiAdMA0GCSqGSIb3DQEBCwUAA4ICAQAH5ohRDeLG4Jg/gXEDPZ2joSFvs+umzPUx
-# vs8F4qn++ldtGTCzwsVmyWrf9efweL3HqJ4l4/m87WtUVwgrUYJEEvu5U4zM9GAS
-# inbMQEBBm9xcF/9c+V4XNZgkVkt070IQyK+/f8Z/8jd9Wj8c8pl5SpFSAK84Dxf1
-# L3mBZdmptWvkx872ynoAb0swRCQiPM/tA6WWj1kpvLb9BOFwnzJKJ/1Vry/+tuWO
-# M7tiX5rbV0Dp8c6ZZpCM/2pif93FSguRJuI57BlKcWOdeyFtw5yjojz6f32WapB4
-# pm3S4Zz5Hfw42JT0xqUKloakvZ4argRCg7i1gJsiOCC1JeVk7Pf0v35jWSUPei45
-# V3aicaoGig+JFrphpxHLmtgOR5qAxdDNp9DvfYPw4TtxCd9ddJgiCGHasFAeb73x
-# 4QDf5zEHpJM692VHeOj4qEir995yfmFrb3epgcunCaw5u+zGy9iCtHLNHfS4hQEe
-# gPsbiSpUObJb2sgNVZl6h3M7COaYLeqN4DMuEin1wC9UJyH3yKxO2ii4sanblrKn
-# QqLJzxlBTeCG+SqaoxFmMNO7dDJL32N79ZmKLxvHIa9Zta7cRDyXUHHXodLFVeNp
-# 3lfB0d4wwP3M5k37Db9dT+mdHhk4L7zPWAUu7w2gUDXa7wknHNWzfjUeCLraNtvT
-# X4/edIhJEqGCAsswggI0AgEBMIH4oYHQpIHNMIHKMQswCQYDVQQGEwJVUzETMBEG
-# A1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWlj
-# cm9zb2Z0IENvcnBvcmF0aW9uMSUwIwYDVQQLExxNaWNyb3NvZnQgQW1lcmljYSBP
-# cGVyYXRpb25zMSYwJAYDVQQLEx1UaGFsZXMgVFNTIEVTTjozRTdBLUUzNTktQTI1
-# RDElMCMGA1UEAxMcTWljcm9zb2Z0IFRpbWUtU3RhbXAgU2VydmljZaIjCgEBMAcG
-# BSsOAwIaAxUAv26eVJaumcmTchd6hqayQMNDXluggYMwgYCkfjB8MQswCQYDVQQG
-# EwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEeMBwG
-# A1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9uMSYwJAYDVQQDEx1NaWNyb3NvZnQg
-# VGltZS1TdGFtcCBQQ0EgMjAxMDANBgkqhkiG9w0BAQUFAAIFAOVPK8owIhgPMjAy
-# MTExMjkxODM2NThaGA8yMDIxMTEzMDE4MzY1OFowdDA6BgorBgEEAYRZCgQBMSww
-# KjAKAgUA5U8rygIBADAHAgEAAgIIDjAHAgEAAgIRNjAKAgUA5VB9SgIBADA2Bgor
-# BgEEAYRZCgQCMSgwJjAMBgorBgEEAYRZCgMCoAowCAIBAAIDB6EgoQowCAIBAAID
-# AYagMA0GCSqGSIb3DQEBBQUAA4GBAKSuH0noJnIFtg5RpXDvWNLW+huGUoi5rQao
-# Q/hD3bgUS5Cz3Uryf8a0+7rPTgb3JP2BRqRmaOV96v1IOlvkTZvn6Rkzn/CcGYke
-# CT1m5tuqQxu1og1btZ/I46qkqBuA3yNLvZXeFacSYcPThm0i57Da+ZI9cD5M+0ao
-# AfNpGZaxMYIDDTCCAwkCAQEwgZMwfDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCldh
-# c2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQxHjAcBgNVBAoTFU1pY3Jvc29mdCBD
-# b3Jwb3JhdGlvbjEmMCQGA1UEAxMdTWljcm9zb2Z0IFRpbWUtU3RhbXAgUENBIDIw
-# MTACEzMAAAFSMEtdiazmcEcAAAAAAVIwDQYJYIZIAWUDBAIBBQCgggFKMBoGCSqG
-# SIb3DQEJAzENBgsqhkiG9w0BCRABBDAvBgkqhkiG9w0BCQQxIgQgGscj0u+qkYw/
-# L5wuBz+kdHOb+1eO9L0pqsxwdEewuNIwgfoGCyqGSIb3DQEJEAIvMYHqMIHnMIHk
-# MIG9BCCT7lzHo4slUIxfEGp8LXQNik/ecK6vuuGWIcmBrrsnpjCBmDCBgKR+MHwx
-# CzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRt
-# b25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xJjAkBgNVBAMTHU1p
-# Y3Jvc29mdCBUaW1lLVN0YW1wIFBDQSAyMDEwAhMzAAABUjBLXYms5nBHAAAAAAFS
-# MCIEIFWlZTc/9zaNk0I+M/tMVCCoIzM871wIWLO7b1YNXbfkMA0GCSqGSIb3DQEB
-# CwUABIIBAIIb/rygBUgyQEFXSYOEOa3hEayOa+xIccSsCJ7LSoMqQOnVy/Jq3kvk
-# Fk0PcJK1xpazk97uaDPFh2WBzTNjw8dOh7R6xuKkBJuDW00JEow1sJujmi1ioVe5
-# NoBzusX22S/I5HSlODMpspTmQ7ol9RSHYKJFVCBavKyhiVNXxftFuxfmGaGG8c7m
-# fSIivdGEapkSeePWzBNgf6JzozrCZoBNHxCKYiwjLTqEG0Aj1WBH8AvpZKVh8m13
-# HGEDSbyAEi/LzoDmviMSCyHXO8TQ9l23hSkKpd/Ui1+nNeQjMI4USj7O1vVGKo2z
-# ExFPbq21sdZKYgarUsL4JFHyCI6PMaw=
-# SIG # End signature block
