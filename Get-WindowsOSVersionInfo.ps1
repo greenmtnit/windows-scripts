@@ -150,9 +150,12 @@ $Window.ShowDialog()
 ################################################
 
 $23H2ScriptBlock = {
-$message = "Your computer needs an update to stay secure and running smoothly.
-You can run the update now, or use the self-service upgrade icon on your desktop at any time.    
-Please contact your IT provider if you need assistance."
+$message = "You need to update to Windows 11 version 24H2. Your current version reaches End-Of-Life on November 11, 2025.
+
+This update is critical to keep your system protected and functioning properly. 
+Please run the update **immediately**. Delaying this update may leave your computer at risk.
+
+Select 'Update Now' to begin the process. If you need assistance, contact your IT provider right away."
 
 # Load WPF assemblies
 Add-Type -AssemblyName PresentationFramework
@@ -161,10 +164,10 @@ Add-Type -AssemblyName PresentationFramework
 [xml]$XAML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Upgrade Required"
-        MinWidth="450" MinHeight="250"
+        Title="URGENT: System Update Required"
+        MinWidth="450" MinHeight="260"
         WindowStartupLocation="CenterScreen"
-        Background="#FAFAFA"
+        Background="#FFF8F8"
         Foreground="#222"
         SizeToContent="WidthAndHeight"
         Topmost="True"
@@ -173,13 +176,14 @@ Add-Type -AssemblyName PresentationFramework
         AllowsTransparency="False">
     <Window.Resources>
         <Style x:Key="HoverButtonStyle" TargetType="Button">
-            <Setter Property="Background" Value="Gray"/>
+            <Setter Property="Background" Value="#DC2626"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="FontSize" Value="14"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="Padding" Value="20,8"/>
-            <Setter Property="Width" Value="120"/>
+            <Setter Property="Width" Value="130"/>
             <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -188,10 +192,10 @@ Add-Type -AssemblyName PresentationFramework
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#0078D4"/>
+                                <Setter TargetName="border" Property="Background" Value="#B91C1C"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#00BCF2"/>
+                                <Setter TargetName="border" Property="Background" Value="#7F1D1D"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="border" Property="Background" Value="LightGray"/>
@@ -203,27 +207,30 @@ Add-Type -AssemblyName PresentationFramework
             </Setter>
         </Style>
     </Window.Resources>
-    <Border BorderThickness="2" BorderBrush="#0078D4" Padding="10">
+    <Border BorderThickness="3" BorderBrush="#DC2626" Padding="10">
         <Grid Margin="10">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>   <!-- Header -->
                 <RowDefinition Height="*"/>     <!-- Body -->
-                <RowDefinition Height="Auto"/>  <!-- Button -->
+                <RowDefinition Height="Auto"/>  <!-- Buttons -->
             </Grid.RowDefinitions>
+
             <!-- Header Row -->
             <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,0,0,10">
-                <TextBlock Text="⚠" FontSize="26" Foreground="#DC2626" Margin="0,0,8,0"/>
-                <TextBlock Text="System Update Needed"
+                <TextBlock Text="⚠" FontSize="30" Foreground="#DC2626" Margin="0,0,10,0"/>
+                <TextBlock Text="Critical System Update Required - Due Nov 11, 2025"
                            FontSize="20" FontWeight="Bold"
-                           VerticalAlignment="Center"/>
+                           VerticalAlignment="Center" Foreground="#B91C1C"/>
             </StackPanel>
+
             <!-- Message -->
             <TextBlock Name="MessageText" Grid.Row="1"
                        TextWrapping="Wrap"
                        FontSize="15"
                        TextAlignment="Center"
-                       Margin="5"
+                       Margin="10"
                        Foreground="Black"/>
+
             <!-- Buttons -->
             <StackPanel Grid.Row="2" Orientation="Horizontal"
                         HorizontalAlignment="Center" Margin="0,15,0,0">
@@ -234,6 +241,7 @@ Add-Type -AssemblyName PresentationFramework
                 <Button Name="DismissButton"
                         Content="Dismiss"
                         Style="{StaticResource HoverButtonStyle}"
+                        Background="#6B7280"
                         Margin="5"/>
             </StackPanel>
         </Grid>
