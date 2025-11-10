@@ -3,8 +3,6 @@
   
   Disables AutoPlay (AutoRun).
   
-  TODO - is reboot needed?
-  
   Sources:
       - https://learn.microsoft.com/en-us/windows/win32/shell/autoplay-reg
       - https://qualys.my.site.com/discussions/s/question/0D52L00004TnwhvSAB/105171-windows-explorer-autoplay-not-disabled-for-default-user
