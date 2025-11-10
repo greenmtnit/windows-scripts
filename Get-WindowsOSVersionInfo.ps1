@@ -22,8 +22,7 @@ if ($null -ne $env:SyncroModule) { Import-Module $env:SyncroModule -DisableNameC
 # To get build numbers, see: https://en.wikipedia.org/wiki/Windows_11_version_history
 
 # $Windows10MinimumBuild = "19045" # 22H2, EoL October 14, 2025
-$Windows11MinimumBuild = "22631" # 23H2, EoL November 11, 2025
-#$Windows11MinimumBuild = "26100" # 24H2, EoL October 13, 2026
+$Windows11MinimumBuild = "26100" # 24H2, EoL October 13, 2026
 
 # SCRIPT BLOCKS - For GUI Pop-Ups
 
