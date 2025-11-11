@@ -475,12 +475,12 @@ elseif ($osInfo.NumericVersion -eq "11") {
         Write-Host "WARNING: Unsupported operating system version detected!"
         if ($null -ne $env:SyncroModule) {
             Rmm-Alert -Category $AlertCategory -Body $AlertBody
-        }    
-    }        
-    else {
+        }
         if ($currentBuild -eq "22631") { # Windows 11 23H2 warning
             $is23H2 = $true
         }
+    }
+    else {
         Write-Host "This machine is running a supported operating system version."
         if ($null -ne $env:SyncroModule) {
             Close-Rmm-Alert -Category $AlertCategory -CloseAlertTicket "true"
