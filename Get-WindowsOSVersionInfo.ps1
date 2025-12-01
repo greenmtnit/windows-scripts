@@ -233,7 +233,7 @@ if ($osInfo.NumericVersion -eq "10") {
             Rmm-Alert -Category $AlertCategory -Body $AlertBody
         }
     }
-    else) {
+    else {
         $AlertBody = "WARNING: Windows 10 detected and ESU is NOT active. You should upgrade to a newer OS or enable ESU and make sure Windows 10 is on version 22H2."
         Write-Host $AlertBody
         if ($null -ne $env:SyncroModule) {
