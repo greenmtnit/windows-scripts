@@ -24,6 +24,9 @@ $Windows11MinimumBuild = "26100" # 24H2, EoL October 13, 2026
 
 $Windows10ESUYear = "1" # Current year for Windows 10 Extended Support updates. See Test-Windows10ESU function.
 
+# Alert Messages
+$AlertCategory = "Windows OS Version"
+
 # SCRIPT BLOCKS - For GUI Pop-Ups
 
 # FUNCTIONS
@@ -204,6 +207,7 @@ function Test-Windows10ESU {
 
 ## MAIN SCRIPT ACTION
 
+# Get OS Info
 $osInfo = Get-OSInfo
 $osInfo | Format-List
 
@@ -211,11 +215,18 @@ $currentBuild = $osInfo.Version.Build
 $currentName = $osInfo.Name
 $currentDisplayVersion = $osInfo.DisplayVersion
 
-# Alert Messages
-$AlertCategory = "Windows OS Version"
+# Handle server
+if ($osInfo.Type -eq "Server") {
+    Write-Host "This is a server. This script currently does not check for EoL server OS. Check EoL manually."
+
+    if ($null -ne $env:SyncroModule) {
+        Close-Rmm-Alert -Category $AlertCategory -CloseAlertTicket "true"
+    }
+    exit 0
+}
 
 # Windows 10 Checks
-if ($osInfo.NumericVersion -eq "10") {
+elseif ($osInfo.NumericVersion -eq "10") {
     $esuActive = Test-Windows10ESU -ESUYear $Windows10ESUYear
     $buildSupported = ($currentBuild -ge $Windows10MinimumBuild)
 
