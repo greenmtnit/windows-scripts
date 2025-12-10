@@ -13,19 +13,21 @@ $fallbackPath = "C:\Program Files (x86)\Advanced Monitoring Agent GP\winagent.ex
 
 if (Test-Path $primaryPath) {
     Write-Host "Found primary installation at: $primaryPath"
-    Start-Process -FilePath $primaryPath -ArgumentList "/removequiet" -Wait -NoNewWindow
-    Write-Host "Primary uninstall completed."
+    $nablePath = $primaryPath
 } 
 elseif (Test-Path $fallbackPath) {
     Write-Host "Primary path not found. Using fallback: $fallbackPath"
-    Start-Process -FilePath $fallbackPath -ArgumentList "/removequiet" -Wait -NoNewWindow
-    Write-Host "Fallback uninstall completed."
+    $nablePath = $primaryPath
 }
 else {
     Write-Host "Neither installation path found. Agent may not be installed."
     Write-Host "Checked paths:"
     Write-Host "  - $primaryPath"
     Write-Host "  - $fallbackPath"
+    exit 1
 }
+
+Write-Host "Starting uninstall."
+cmd /c """$nablePath"" /removequiet"
 
 Write-Host "Uninstall process finished."
