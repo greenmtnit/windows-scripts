@@ -8,19 +8,15 @@ if ($null -ne $env:SyncroModule) { Import-Module $env:SyncroModule -DisableNameC
    - Backs up BitLocker info, if present, to a Syncro asset custom field
    - Does NOT enable BitLocker on Intune-managed devices (we use Intune policies for that), but does check for BitLocker enablement.
    - Enables BitLocker for non-Intune managed devices where the $UseBitlockerEncryption Syncro field is set to "true" the client
-   
-  NOTES
-   - Currently does NOT run on server OS
-   
+      
   SYNCRO VARIABLES TO SET
    - Create an asset custom field named "BitLockerRecoveryInfo" and add to script as:
    - $existingBitlockerInfo - Type = platform - {{asset_custom_field_bitlockerrecoveryinfo}
    - Create a organization (customer) custom field (checkbox) called "UseBitlockerEncryption" and check the box for clients who use BitLocker. Add to script as:
    - $UseBitlockerEncryption - Type = platform - {{customer_custom_field_usebitlockerencryption}}
-   
-   
+   - $DisableSkippingServers - Type = dropdown - "true" or "false" (default false). Turn off the check that skips servers.
   TODO
-   - Enable Bitlocker on non-VM server OS
+   - By default, enable Bitlocker on non-VM server OS
   
 #>
 
@@ -106,14 +102,17 @@ $alertCategory = "BitLocker"
 
 # Convert Syncro's string variables to boolean
 $UseBitlockerEncryption = ConvertTo-Boolean $UseBitlockerEncryption
+$DisableSkippingServers = ConvertTo-Boolean $DisableSkippingServers
 
 # PRECONDITION CHECKS
 # Check if device is a server
-$osInfo = Get-CimInstance -ClassName Win32_OperatingSystem
-if ($osInfo.ProductType -ne 1) {
-    Write-Host "This is a server. The script will NOT enable BitLocker if not already enabled, but will back up any existing BitLocker info to Syncro."
-    Save-BitlockerInfoToSyncro
-    exit
+if (-not ($DisableSkippingServers)) {
+    $osInfo = Get-CimInstance -ClassName Win32_OperatingSystem
+    if ($osInfo.ProductType -ne 1) {
+        Write-Host "This is a server. The script will NOT enable BitLocker if not already enabled, but will back up any existing BitLocker info to Syncro. Note: use `$DisableSkippingServers = true to override this behavior."
+        Save-BitlockerInfoToSyncro
+        exit
+    }
 }
 
 # Check for BitLocker support

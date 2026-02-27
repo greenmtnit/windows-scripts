@@ -1,10 +1,10 @@
 <#
-  Uninstall-N-ableAdvancedMonitoringAgentGP.ps1
+  Cleanup-N-ableAdvancedMonitoringAgentGP.ps1
     
-  Uninstalls N-able Advanced Monitoring Agent GP. Note: 
-  If Windows Agent Uninstall Protection is enabled, which requires a passphrase to uninstall, this can be bypassed by removing the settings.ini file in the install path, e.g. "C:\Program Files (x86)\Advanced Monitoring Agent\settings.ini"
-  Original source: https://documentation.n-able.com/remote-management/userguide/Content/uninstall_the_agent.htm
-  
+  Cleans up N-able Advanced Monitoring Agent GP remnants.
+
+  This script is only for *cleanup* of Advanced Monitoring Agent GP remnants, not full uninstall. First, uninstall manually from appwiz.cpl, by using the Uninstall-N-able.ps1 script, and/or using Group Policy.
+    
 #>
 
 # Check if N-Able agent is actually installed. If so, exit. This script is for cleanup only.
