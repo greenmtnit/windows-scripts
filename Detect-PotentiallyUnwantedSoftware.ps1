@@ -1,7 +1,8 @@
 <#
   Detect-PotentiallyUnwantedSoftware.ps1
     
-  Detects potentially undesirable software and throws a Syncro RMM alert if any found..
+  Detects potentially undesirable software and throws a Syncro RMM alert if any found.
+  If no software is found, clear the alert.
   
 #>
 
@@ -141,6 +142,7 @@ $ApplicationList = @(
     "Guacamole*"
     "impcremote*"
     "immunet*"
+    "ImmyBot*"
     "Instant Housecall*"
     "instatech*"
     "ITarian*"
