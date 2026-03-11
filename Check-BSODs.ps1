@@ -7,11 +7,18 @@
 
     First execution only initializes the tracking marker and does not process anything.
 
-    Reccomend scheduling the script to run hourly using a Remote Monitoring and Mangement (RMM) tool.
+    Recommend scheduling the script to run hourly using a Remote Monitoring and Management (RMM) tool.
 #>
 
 # Import the SyncroRMM Module
 Import-Module $env:SyncroModule
+
+# Check if IgnoreBSODs asset custom field is set
+
+if ($IgnoreBSODs -eq "true") {
+    Write-Host "`$IgnoreBSODs is set. Script will exit."
+    exit 0
+}
 
 # Marker file path
 $markerFile = "C:\Program Files\Green Mountain IT Solutions\Scripts\bsod_script_last_run.txt"
@@ -37,7 +44,7 @@ $files = Get-ChildItem $minidumpFolder -Filter "*.dmp" -ErrorAction SilentlyCont
 
 # If no new minidumps are found, exit cleanly with code 0.
 if (!$files) {
-    Write-Host "No new minidump files found. Exiting."
+    Write-Host "No new minidump files found since last script run. Exiting."
     exit 0
 }
 
@@ -46,8 +53,13 @@ if (!$files) {
 # Create a ticket using the SyncroRMM Create-Syncro-Ticket cmdlet.
 $value = Create-Syncro-Ticket -Subject "$env:COMPUTERNAME - BSOD Crash" -IssueType "Maintenance" -Status "New"
 
-# The ticket number of the created ticket will be $value.ticket.id
-$ticketNumber = $value.ticket.id
+# The ticket ID of the created ticket will be $value.ticket.id
+$ticketID = $value.ticket.id
+
+# Number is different from ID. Number is the public-facing number; value is in the URL.
+$ticketNumber = $value.ticket.number
+
+Write-Host "Created Syncro ticket number $ticketNumber"
 
 # Initialize the ticket notes
 $ticketNotes = "Remember to follow process: https://app.process.st/workflows/How-to-handle-a-BSOD-Blue-Screen-RMM-Alert-nwiGLI0_WuVIpyeIgwZAsw/dashboard `n`n"
@@ -93,7 +105,7 @@ if ($BSODFilter) {
 
     $bsodTime = $BSODFilter.Timestamp
 
-    $message = "Crash time`n$bsodTime`n`nBlueScreenView Analysis`nDriver: $($BSODFilter.CausedByDriver)`nError code: $($BSODFilter.Errorcode)`nReason: $($BSODFilter.Reason)`n"
+    $message = "BSOD Found At`n$bsodTime`n`nBlueScreenView Analysis`nDriver: $($BSODFilter.CausedByDriver)`nError code: $($BSODFilter.Errorcode)`nReason: $($BSODFilter.Reason)`n"
 
     # Add the log message to the Syncro asset activity log
     Log-Activity -Message "$message" -EventName "BSOD Analysis"
@@ -102,27 +114,26 @@ if ($BSODFilter) {
     $ticketNotes += $message
 }
 
-# Check if the BSOD is the only BSOD to occur in the last 60 days.
+# Check if the BSOD is the only BSOD to occur in the last 60 days
 $sixtyDaysAgo = (Get-Date).AddDays(-60)
-$recentBSODs = $BSODs | Where-Object { $_.Timestamp -gt $sixtyDaysAgo }
 
-if ($recentBSODs.Count -le 1) {
+# Get all minidump files modified in the last 60 days
+$recentDumps = Get-ChildItem "C:\Windows\Minidump" -Filter "*.dmp" -ErrorAction SilentlyContinue |
+    Where-Object { $_.LastWriteTime -gt $sixtyDaysAgo }
 
-    $ticketNotes += "`nFrequency`nThis IS the only BSOD in the last 60 days.`nNotify client per our process and close ticket.`n"
+if ($recentDumps.Count -le 1) {
+    $ticketNotes += "`nFrequency:`nThis IS the only BSOD in the last 60 days.`nNotify client per our process and close ticket.`n"
+} else {
+    $ticketNotes += "`nFrequency:`nThis is NOT the only BSOD in the last 60 days.`nFurther investigation is needed.`n"
 
-}
-else {
-
-    $ticketNotes += "`nFrequency`nThis is NOT only BSOD in the last 60 days.`nFurther investigation is needed.`n"
-
-    $previous = $recentBSODs |
-        Sort-Object Timestamp -Descending |
+    # List up to 10 previous BSODs
+    $previous = $recentDumps |
+        Sort-Object LastWriteTime -Descending |
         Select-Object -First 10
 
     $ticketNotes += "Previous BSODs:`n"
-
-    foreach ($bsod in $previous) {
-        $ticketNotes += "$($bsod.Timestamp) - Driver: $($bsod.CausedByDriver) - Error: $($bsod.Errorcode)`n"
+    foreach ($dump in $previous) {
+        $ticketNotes += "$($dump.LastWriteTime) - File: $($dump.Name)`n"
     }
 }
 
@@ -163,4 +174,4 @@ $ticketNotes += "`nAsset`nModel: $manufacturer $model`nSerial: $serialNumber`nAg
 $ticketNotes += "`nHardware`nCPU: $($cpu.Name)`nMemory: $memoryGB GB`nDisks: $diskSummary"
 
 # Finally, add ticket notes to the ticket
-Create-Syncro-Ticket-Comment -TicketIdOrNumber $ticketNumber -Subject "Diagnosis" -Body $ticketNotes -Hidden "false" -DoNotEmail "true"
+Create-Syncro-Ticket-Comment -TicketIdOrNumber $ticketID -Subject "Diagnosis" -Body $ticketNotes -Hidden "false" -DoNotEmail "true"
