@@ -61,8 +61,8 @@ else {
 # Testing thresholds
 # We don't often need to change these ad-hoc, so we don't pass these in as Syncro variables.
 $MaxTemperature = 70 # Maximum disk temperature in Celsius. Default is 70.
-$MaxPowerCycles = 4000 # How many times the drive was turned off and on. Default is 4000.
-$MaxPowerOnTime = 35063 # How many hours the drive has been on. Default is 35063 (about 4 years).
+$MaxPowerCycles = 7000 # How many times the drive was turned off and on. Default is 7000.
+$MaxPowerOnTime = 70000 # How many hours the drive has been on. Default is 70000 (about 8 years).
 $MaxTestInterval = 168 # Max hours between SMART tests. Default is 168 hours (1 week).
 
 # Enable logging, if requested
@@ -255,6 +255,9 @@ if (Check-VM) {
 # Initialize an empty array to store disk errors
 $diskErrors = @()
 
+# Initialize $diskHealthy
+$diskHealthy = "True"
+
 # Detect testing mode
 if ($TestingMode) {
     Write-Host "NOTICE: RUNNING IN TESTING MODE.`n"
@@ -274,7 +277,7 @@ foreach ($disk in $disks) {
     if (!($disk.HealthStatus -eq "Healthy")) {
         Write-IndentedHost "WARNING! Disk is NOT healthy!"
         $diskErrors += "Disk $disk.FriendlyName health status failed!"
-        $diskHealth = $false
+        $diskHealthy = $false
     }
 
     # Check values from Get-StorageReliabilityCounter
@@ -303,7 +306,7 @@ foreach ($disk in $disks) {
     
     if ($hasReliabilityErrors) {
         Write-IndentedHost "WARNING! $($disk.FriendlyName) HAS ERRORS!"
-        $diskHealth = $false
+        $diskHealthy = $false
     }
     else {
         Write-IndentedHost "Disk passed basic checks."
@@ -392,16 +395,13 @@ foreach ($smartDisk in $smartDisks){
              Print-ObjectProperties -Object $smartData
         }
  
-        # Initialize $diskHealth
-        $diskHealth = "True"
-
         # Check basic SMART status
         $smartStatus = $smartData.smart_status.passed
         if (! $smartStatus) {
             
             Write-IndentedHost "WARNING! SMART STATUS FAILED!"
             $diskErrors += "SMART status failed for $name"
-            $diskHealth = $false
+            $diskHealthy = $false
         }
         else {
             Write-IndentedHost "SMART status: PASSED. Note: this does not always mean the disk is healthy."
@@ -420,14 +420,14 @@ foreach ($smartDisk in $smartDisks){
         }
         else {
             $powerCycleCount = $smartData.power_cycle_count
-            $diskHealth = Check-Threshold -Value $powerCycleCount -Threshold $MaxPowerCycles -ParameterName $parameterName
-            if (! $diskHealth) {
+            if (! (Check-Threshold -Value $powerCycleCount -Threshold $MaxPowerCycles -ParameterName $parameterName)) {
                 if ($ignoreDiskPowerErrors) {
                     Write-IndentedHost "A power error was detected, but `$ignoreDiskPowerErrors is set. Supressing alert."
-                    $diskHealth = $true
+                    $diskHealthy = $true
                 }
                 else {
                     $diskErrors += "Disk $model has exceed the max $parameterName."
+                    $diskHealthy = $false
                 }
             }
         }
@@ -439,14 +439,14 @@ foreach ($smartDisk in $smartDisks){
         }
         else {
             $powerOnTime = $smartData.power_on_time.hours
-            $diskHealth = Check-Threshold -Value $powerOnTime -Threshold $MaxPowerOnTime -ParameterName $parameterName
-            if (! $diskHealth) {
+            if (! (Check-Threshold -Value $powerOnTime -Threshold $MaxPowerOnTime -ParameterName $parameterName)) {
                 if ($ignoreDiskPowerErrors) {
                     Write-IndentedHost "A power error was detected, but `$ignoreDiskPowerErrors is set. Supressing alert."
-                    $diskHealth = $true
+                    $diskHealthy = $true
                 }
                 else {
                     $diskErrors += "Disk $model has exceed the max $parameterName."
+                    $diskHealthy = $false
                 }
             }
         }
@@ -458,9 +458,9 @@ foreach ($smartDisk in $smartDisks){
         }
         else {
             $temperature = $smartData.temperature.current
-            $diskHealth = Check-Threshold -Value $temperature -Threshold $MaxTemperature -ParameterName $parameterName
-            if (! $diskHealth) {
+            if (! (Check-Threshold -Value $temperature -Threshold $MaxTemperature -ParameterName $parameterName)) {
                 $diskErrors += "Disk $model has exceeded the max $parameterName."
+                $diskHealthy = $false
             }
         }      
         
@@ -512,7 +512,7 @@ foreach ($smartDisk in $smartDisks){
                 if ($readFailureFound) {
                     Write-IndentedHost "WARNING: found failed SMART tests!"
                     $diskErrors += "Disk $model has failed self tests"
-                    $diskHealth = $false
+                    $diskHealthy = $false
                 }    
             }
 
@@ -525,7 +525,7 @@ foreach ($smartDisk in $smartDisks){
         }
 
         # Final ruling on disk health
-        if ($diskHealth) {
+        if ($diskHealthy) {
             Write-IndentedHost "Disk appears to be healthy."
         }
         else {
