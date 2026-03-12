@@ -63,7 +63,8 @@ else {
 $MaxTemperature = 70 # Maximum disk temperature in Celsius. Default is 70.
 $MaxPowerCycles = 7000 # How many times the drive was turned off and on. Default is 7000.
 $MaxPowerOnTime = 70000 # How many hours the drive has been on. Default is 70000 (about 8 years).
-$MaxTestInterval = 168 # Max hours between SMART tests. Default is 168 hours (1 week).
+$MaxTestInterval = 168 # Max hours between SMART tests. Default is 168 hours (1 week).\
+$MaxPercentageUsed = 80 # Max percentage_used value for supported SSDs
 
 # Enable logging, if requested
 if ($LogOutput -eq "true") {
@@ -463,6 +464,16 @@ foreach ($smartDisk in $smartDisks){
                 $diskHealthy = $false
             }
         }      
+        
+        # Check for NVME percentage_used, if supported
+        if ($null -ne $smartData.nvme_smart_health_information_log.percentage_used ) { # Use $null -ne to handle case of value of 0
+            $parameterName = "Lifetime percentage used"
+            $percentageUsed = $smartData.nvme_smart_health_information_log.percentage_used
+            if (! (Check-Threshold -Value $percentageUsed -Threshold $MaxPercentageUsed -ParameterName $parameterName)) {
+                $diskErrors += "Disk $model has exceeded the max $parameterName."
+                $diskHealthy = $false
+            }
+        }
         
          # Check for Reallocated Sectors. This is a little different, so won't work with the Check-Threshold function
         if (! $smartData.ata_smart_attributes.table  ) {
