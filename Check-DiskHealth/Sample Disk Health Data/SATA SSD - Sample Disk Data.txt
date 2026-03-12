@@ -1,0 +1,847 @@
+#SAMPLE SATA SSD DATA
+
+Checking SMART data for /dev/sdb
+    Model: PNY CS900 500GB SSD
+    Serial number: PNY22302207250100423
+json_format_version:
+smartctl:
+    version:
+    svn_revision:
+        5338
+    platform_info:
+        x86_64-w64-mingw32-w11-b26200
+    build_info:
+        (sf-7.3-1)
+    argv:
+        Length:
+            8
+        Length:
+            2
+        Length:
+            2
+        Length:
+            8
+    drive_database_version:
+        string:
+            7.3/5319
+    exit_status:
+        0
+local_time:
+    time_t:
+        1773326464
+    asctime:
+        Thu Mar 12 10:41:04 2026 EDT
+device:
+    name:
+        /dev/sdb
+    info_name:
+        /dev/sdb
+    type:
+        ata
+    protocol:
+        ATA
+model_name:
+    PNY CS900 500GB SSD
+serial_number:
+    PNY22302207250100423
+wwn:
+    naa:
+        5
+    oui:
+        16309068
+    id:
+        9177138246
+firmware_version:
+    CS900615
+user_capacity:
+    blocks:
+        976773168
+    bytes:
+        500107862016
+logical_block_size:
+    512
+physical_block_size:
+    512
+rotation_rate:
+    0
+form_factor:
+    ata_value:
+        3
+    name:
+        2.5 inches
+trim:
+    supported:
+        True
+    deterministic:
+        False
+    zeroed:
+        False
+in_smartctl_database:
+    False
+ata_version:
+    string:
+        ACS-4 (minor revision not indicated)
+    major_value:
+        4088
+    minor_value:
+        0
+sata_version:
+    string:
+        SATA 3.2
+    value:
+        255
+interface_speed:
+    max:
+        sata_value:
+            14
+        string:
+            6.0 Gb/s
+        units_per_second:
+            60
+        bits_per_unit:
+            100000000
+    current:
+        sata_value:
+            3
+        string:
+            6.0 Gb/s
+        units_per_second:
+            60
+        bits_per_unit:
+            100000000
+smart_support:
+    available:
+        True
+    enabled:
+        True
+smart_status:
+    passed:
+        True
+ata_smart_data:
+    offline_data_collection:
+        status:
+            value:
+                0
+            string:
+                was never started
+        completion_seconds:
+            65535
+    self_test:
+        status:
+            value:
+                0
+            string:
+                completed without error
+            passed:
+                True
+        polling_minutes:
+            short:
+                2
+            extended:
+                30
+            conveyance:
+                6
+    capabilities:
+        values:
+        exec_offline_immediate_supported:
+            True
+        offline_is_aborted_upon_new_cmd:
+            False
+        offline_surface_scan_supported:
+            True
+        self_tests_supported:
+            True
+        conveyance_self_test_supported:
+            True
+        selective_self_test_supported:
+            True
+        attribute_autosave_enabled:
+            True
+        error_logging_supported:
+            True
+        gp_logging_supported:
+            True
+ata_smart_attributes:
+    revision:
+        16
+    table:
+        id:
+            1
+        name:
+            Raw_Read_Error_Rate
+        value:
+            100
+        worst:
+            100
+        thresh:
+            50
+        when_failed:
+
+        flags:
+            value:
+                11
+            string:
+                PO-R--
+            prefailure:
+                True
+            updated_online:
+                True
+            performance:
+                False
+            error_rate:
+                True
+            event_count:
+                False
+            auto_keep:
+                False
+        raw:
+            value:
+                0
+            string:
+                0
+        id:
+            9
+        name:
+            Power_On_Hours
+        value:
+            100
+        worst:
+            100
+        thresh:
+            0
+        when_failed:
+
+        flags:
+            value:
+                18
+            string:
+                -O--C-
+            prefailure:
+                False
+            updated_online:
+                True
+            performance:
+                False
+            error_rate:
+                False
+            event_count:
+                True
+            auto_keep:
+                False
+        raw:
+            value:
+                29723
+            string:
+                29723
+        id:
+            12
+        name:
+            Power_Cycle_Count
+        value:
+            100
+        worst:
+            100
+        thresh:
+            0
+        when_failed:
+
+        flags:
+            value:
+                18
+            string:
+                -O--C-
+            prefailure:
+                False
+            updated_online:
+                True
+            performance:
+                False
+            error_rate:
+                False
+            event_count:
+                True
+            auto_keep:
+                False
+        raw:
+            value:
+                47
+            string:
+                47
+        id:
+            168
+        name:
+            Unknown_Attribute
+        value:
+            100
+        worst:
+            100
+        thresh:
+            0
+        when_failed:
+
+        flags:
+            value:
+                18
+            string:
+                -O--C-
+            prefailure:
+                False
+            updated_online:
+                True
+            performance:
+                False
+            error_rate:
+                False
+            event_count:
+                True
+            auto_keep:
+                False
+        raw:
+            value:
+                0
+            string:
+                0
+        id:
+            170
+        name:
+            Unknown_Attribute
+        value:
+            100
+        worst:
+            100
+        thresh:
+            0
+        when_failed:
+
+        flags:
+            value:
+                3
+            string:
+                PO----
+            prefailure:
+                True
+            updated_online:
+                True
+            performance:
+                False
+            error_rate:
+                False
+            event_count:
+                False
+            auto_keep:
+                False
+        raw:
+            value:
+                111
+            string:
+                111
+        id:
+            173
+        name:
+            Unknown_Attribute
+        value:
+            100
+        worst:
+            100
+        thresh:
+            0
+        when_failed:
+
+        flags:
+            value:
+                18
+            string:
+                -O--C-
+            prefailure:
+                False
+            updated_online:
+                True
+            performance:
+                False
+            error_rate:
+                False
+            event_count:
+                True
+            auto_keep:
+                False
+        raw:
+            value:
+                8257690
+            string:
+                8257690
+        id:
+            192
+        name:
+            Power-Off_Retract_Count
+        value:
+            100
+        worst:
+            100
+        thresh:
+            0
+        when_failed:
+
+        flags:
+            value:
+                18
+            string:
+                -O--C-
+            prefailure:
+                False
+            updated_online:
+                True
+            performance:
+                False
+            error_rate:
+                False
+            event_count:
+                True
+            auto_keep:
+                False
+        raw:
+            value:
+                37
+            string:
+                37
+        id:
+            194
+        name:
+            Temperature_Celsius
+        value:
+            67
+        worst:
+            67
+        thresh:
+            0
+        when_failed:
+
+        flags:
+            value:
+                35
+            string:
+                PO---K
+            prefailure:
+                True
+            updated_online:
+                True
+            performance:
+                False
+            error_rate:
+                False
+            event_count:
+                False
+            auto_keep:
+                True
+        raw:
+            value:
+                141736083489
+            string:
+                33 (Min/Max 33/33)
+        id:
+            218
+        name:
+            Unknown_Attribute
+        value:
+            100
+        worst:
+            100
+        thresh:
+            50
+        when_failed:
+
+        flags:
+            value:
+                11
+            string:
+                PO-R--
+            prefailure:
+                True
+            updated_online:
+                True
+            performance:
+                False
+            error_rate:
+                True
+            event_count:
+                False
+            auto_keep:
+                False
+        raw:
+            value:
+                0
+            string:
+                0
+        id:
+            231
+        name:
+            Unknown_SSD_Attribute
+        value:
+            100
+        worst:
+            100
+        thresh:
+            0
+        when_failed:
+
+        flags:
+            value:
+                19
+            string:
+                PO--C-
+            prefailure:
+                True
+            updated_online:
+                True
+            performance:
+                False
+            error_rate:
+                False
+            event_count:
+                True
+            auto_keep:
+                False
+        raw:
+            value:
+                95
+            string:
+                95
+        id:
+            241
+        name:
+            Total_LBAs_Written
+        value:
+            100
+        worst:
+            100
+        thresh:
+            0
+        when_failed:
+
+        flags:
+            value:
+                18
+            string:
+                -O--C-
+            prefailure:
+                False
+            updated_online:
+                True
+            performance:
+                False
+            error_rate:
+                False
+            event_count:
+                True
+            auto_keep:
+                False
+        raw:
+            value:
+                25023
+            string:
+                25023
+power_on_time:
+    hours:
+        29723
+power_cycle_count:
+    47
+temperature:
+    current:
+        33
+ata_smart_error_log:
+    summary:
+        revision:
+            1
+        count:
+            0
+ata_smart_self_test_log:
+    standard:
+        revision:
+            1
+        table:
+            type:
+                value:
+                    1
+                string:
+                    Short offline
+            status:
+                value:
+                    0
+                string:
+                    Completed without error
+                passed:
+                    True
+            lifetime_hours:
+                29605
+            type:
+                value:
+                    1
+                string:
+                    Short offline
+            status:
+                value:
+                    0
+                string:
+                    Completed without error
+                passed:
+                    True
+            lifetime_hours:
+                29436
+            type:
+                value:
+                    1
+                string:
+                    Short offline
+            status:
+                value:
+                    0
+                string:
+                    Completed without error
+                passed:
+                    True
+            lifetime_hours:
+                29244
+            type:
+                value:
+                    1
+                string:
+                    Short offline
+            status:
+                value:
+                    0
+                string:
+                    Completed without error
+                passed:
+                    True
+            lifetime_hours:
+                29051
+            type:
+                value:
+                    1
+                string:
+                    Short offline
+            status:
+                value:
+                    0
+                string:
+                    Completed without error
+                passed:
+                    True
+            lifetime_hours:
+                28882
+            type:
+                value:
+                    1
+                string:
+                    Short offline
+            status:
+                value:
+                    0
+                string:
+                    Completed without error
+                passed:
+                    True
+            lifetime_hours:
+                28690
+            type:
+                value:
+                    1
+                string:
+                    Short offline
+            status:
+                value:
+                    0
+                string:
+                    Completed without error
+                passed:
+                    True
+            lifetime_hours:
+                28498
+            type:
+                value:
+                    1
+                string:
+                    Short offline
+            status:
+                value:
+                    0
+                string:
+                    Completed without error
+                passed:
+                    True
+            lifetime_hours:
+                28306
+            type:
+                value:
+                    1
+                string:
+                    Short offline
+            status:
+                value:
+                    0
+                string:
+                    Completed without error
+                passed:
+                    True
+            lifetime_hours:
+                28114
+            type:
+                value:
+                    1
+                string:
+                    Short offline
+            status:
+                value:
+                    0
+                string:
+                    Completed without error
+                passed:
+                    True
+            lifetime_hours:
+                27945
+            type:
+                value:
+                    1
+                string:
+                    Short offline
+            status:
+                value:
+                    0
+                string:
+                    Completed without error
+                passed:
+                    True
+            lifetime_hours:
+                27753
+            type:
+                value:
+                    1
+                string:
+                    Short offline
+            status:
+                value:
+                    0
+                string:
+                    Completed without error
+                passed:
+                    True
+            lifetime_hours:
+                27584
+            type:
+                value:
+                    1
+                string:
+                    Short offline
+            status:
+                value:
+                    0
+                string:
+                    Completed without error
+                passed:
+                    True
+            lifetime_hours:
+                27392
+            type:
+                value:
+                    1
+                string:
+                    Short offline
+            status:
+                value:
+                    16
+                string:
+                    Aborted by host
+            lifetime_hours:
+                0
+            type:
+                value:
+                    1
+                string:
+                    Short offline
+            status:
+                value:
+                    16
+                string:
+                    Aborted by host
+            lifetime_hours:
+                0
+            type:
+                value:
+                    1
+                string:
+                    Short offline
+            status:
+                value:
+                    32
+                string:
+                    Interrupted (host reset)
+            lifetime_hours:
+                0
+        count:
+            16
+        error_count_total:
+            0
+        error_count_outdated:
+            0
+ata_smart_selective_self_test_log:
+    revision:
+        0
+    table:
+        lba_min:
+            0
+        lba_max:
+            0
+        status:
+            value:
+                0
+            string:
+                Not_testing
+        lba_min:
+            0
+        lba_max:
+            0
+        status:
+            value:
+                0
+            string:
+                Not_testing
+        lba_min:
+            0
+        lba_max:
+            0
+        status:
+            value:
+                0
+            string:
+                Not_testing
+        lba_min:
+            0
+        lba_max:
+            0
+        status:
+            value:
+                0
+            string:
+                Not_testing
+        lba_min:
+            0
+        lba_max:
+            0
+        status:
+            value:
+                0
+            string:
+                Not_testing
+    flags:
+        value:
+            0
+        remainder_scan_enabled:
+            False
+    power_up_scan_resume_minutes:
+        0
+    SMART status: PASSED. Note: this does not always mean the disk is healthy.
+    Power cycle count: 47. Max is set to 4000.
+    Power on time: 29723. Max is set to 70000.
+    Temperature: 33. Max is set to 70.
+    Disk supports self-tests and has a recent self-test logged.
+    Disk appears to be healthy.
+

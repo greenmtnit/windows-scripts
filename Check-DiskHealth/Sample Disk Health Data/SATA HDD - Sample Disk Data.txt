@@ -1,0 +1,497 @@
+# SAMPLE SATA HDD DATA
+
+Checking SMART data for /dev/sda
+    Model: ST1000LM035-1RK172
+    Serial number: ZDE28XZG
+json_format_version:
+smartctl:
+    version:
+    svn_revision:
+        5338
+    platform_info:
+        x86_64-w64-mingw32-w10-b19045
+    build_info:
+        (sf-7.3-1)
+    argv:
+        Length:
+            8
+        Length:
+            2
+        Length:
+            2
+        Length:
+            8
+    drive_database_version:
+        string:
+            7.3/5319
+    exit_status:
+        0
+local_time:
+    time_t:
+        1773324842
+    asctime:
+        Thu Mar 12 10:14:02 2026 EDT
+device:
+    name:
+        /dev/sda
+    info_name:
+        /dev/sda
+    type:
+        ata
+    protocol:
+        ATA
+model_family:
+    Seagate Mobile HDD
+model_name:
+    ST1000LM035-1RK172
+serial_number:
+    ZDE28XZG
+wwn:
+    naa:
+        5
+    oui:
+        3152
+    id:
+        2746709636
+firmware_version:
+    SDM2
+user_capacity:
+    blocks:
+        1953525168
+    bytes:
+        1000204886016
+logical_block_size:
+    512
+physical_block_size:
+    4096
+rotation_rate:
+    5400
+form_factor:
+    ata_value:
+        3
+    name:
+        2.5 inches
+trim:
+    supported:
+        False
+in_smartctl_database:
+    True
+ata_version:
+    string:
+        ACS-3 T13/2161-D revision 3b
+    major_value:
+        2032
+    minor_value:
+        31
+sata_version:
+    string:
+        SATA 3.1
+    value:
+        127
+interface_speed:
+    max:
+        sata_value:
+            14
+        string:
+            6.0 Gb/s
+        units_per_second:
+            60
+        bits_per_unit:
+            100000000
+    current:
+        sata_value:
+            3
+        string:
+            6.0 Gb/s
+        units_per_second:
+            60
+        bits_per_unit:
+            100000000
+smart_support:
+    available:
+        True
+    enabled:
+        True
+smart_status:
+    passed:
+        True
+ata_smart_data:
+    offline_data_collection:
+        status:
+            value:
+                0
+            string:
+                was never started
+        completion_seconds:
+            0
+    self_test:
+        status:
+            value:
+                0
+            string:
+                completed without error
+            passed:
+                True
+        polling_minutes:
+            short:
+                1
+            extended:
+                166
+            conveyance:
+                2
+    capabilities:
+        values:
+        exec_offline_immediate_supported:
+            True
+        offline_is_aborted_upon_new_cmd:
+            False
+        offline_surface_scan_supported:
+            False
+        self_tests_supported:
+            True
+        conveyance_self_test_supported:
+            True
+        selective_self_test_supported:
+            True
+        attribute_autosave_enabled:
+            True
+        error_logging_supported:
+            True
+        gp_logging_supported:
+            True
+ata_sct_capabilities:
+    value:
+        12341
+    error_recovery_control_supported:
+        False
+    feature_control_supported:
+        True
+    data_table_supported:
+        True
+ata_smart_attributes:
+    revision:
+        10
+    table:
+        id:
+            1
+        name:
+            Raw_Read_Error_Rate
+        value:
+            100
+        worst:
+            64
+        thresh:
+            6
+        when_failed:
+            
+        flags:
+            value:
+                15
+            string:
+                POSR-- 
+            prefailure:
+                True
+            updated_online:
+                True
+            performance:
+                True
+            error_rate:
+                True
+            event_count:
+                False
+            auto_keep:
+                False
+        raw:
+            value:
+                85861
+            string:
+                85861
+        id:
+            3
+        name:
+            Spin_Up_Time
+        value:
+            99
+        worst:
+            99
+        thresh:
+            0
+        when_failed:
+            
+        flags:
+            value:
+                3
+            string:
+                PO---- 
+            prefailure:
+                True
+            updated_online:
+                True
+            performance:
+                False
+            error_rate:
+                False
+            event_count:
+                False
+            auto_keep:
+                False
+        raw:
+            value:
+                0
+            string:
+                0
+        id:
+            4
+        name:
+            Start_Stop_Count
+        value:
+            100
+        worst:
+            100
+        thresh:
+            20
+        when_failed:
+            
+        flags:
+            value:
+                50
+            string:
+                -O--CK 
+            prefailure:
+                False
+            updated_online:
+                True
+            performance:
+                False
+            error_rate:
+                False
+            event_count:
+                True
+            auto_keep:
+                True
+        raw:
+            value:
+                104
+            string:
+                104
+        id:
+            5
+        name:
+            Reallocated_Sector_Ct
+        value:
+            100
+        worst:
+            100
+        thresh:
+            36
+        when_failed:
+            
+        flags:
+            value:
+                51
+            string:
+                PO--CK 
+            prefailure:
+                True
+            updated_online:
+                True
+            performance:
+                False
+            error_rate:
+                False
+            event_count:
+                True
+            auto_keep:
+                True
+        raw:
+            value:
+                0
+            string:
+                0
+        id:
+            7
+        name:
+            Seek_Error_Rate
+        value:
+            87
+        worst:
+            60
+        thresh:
+            45
+        when_failed:
+            
+        flags:
+            value:
+                15
+            string:
+                POSR-- 
+            prefailure:
+                True
+            updated_online:
+                True
+            performance:
+                True
+            error_rate:
+                True
+            event_count:
+                False
+            auto_keep:
+                False
+        raw:
+            value:
+                4759112206
+            string:
+                4759112206
+        id:
+            9
+        name:
+            Power_On_Hours
+        value:
+            21
+        worst:
+            21
+        thresh:
+            0
+        when_failed:
+            
+        flags:
+            value:
+                50
+            string:
+                -O--CK 
+            prefailure:
+                False
+            updated_online:
+                True
+            performance:
+                False
+            error_rate:
+                False
+            event_count:
+                True
+            auto_keep:
+                True
+        raw:
+            value:
+                182905477336922
+            string:
+                69466 (166 90 0)
+        id:
+            10
+        name:
+            Spin_Retry_Count
+        value:
+            100
+        worst:
+            100
+        thresh:
+            97
+        when_failed:
+            
+        flags:
+            value:
+                19
+            string:
+                PO--C- 
+            prefailure:
+                True
+            updated_online:
+                True
+            performance:
+                False
+            error_rate:
+                False
+            event_count:
+                True
+            auto_keep:
+                False
+        raw:
+            value:
+                0
+            string:
+                0
+        id:
+            12
+        name:
+            Power_Cycle_Count
+        value:
+            100
+        worst:
+            100
+        thresh:
+            20
+        when_failed:
+            
+        flags:
+            value:
+                50
+            string:
+                -O--CK 
+            prefailure:
+                False
+            updated_online:
+                True
+            performance:
+                False
+            error_rate:
+                False
+            event_count:
+                True
+            auto_keep:
+                True
+        raw:
+            value:
+                94
+            string:
+                94
+        id:
+            184
+        name:
+            End-to-End_Error
+        value:
+            100
+        worst:
+            100
+        thresh:
+            99
+        when_failed:
+            
+        flags:
+            value:
+                50
+            string:
+                -O--CK 
+            prefailure:
+                False
+            updated_online:
+                True
+            performance:
+                False
+            error_rate:
+                False
+            event_count:
+                True
+            auto_keep:
+                True
+        raw:
+            value:
+                0
+            string:
+                0
+        id:
+            187
+        name:
+            Reported_Uncorrect
+        value:
+            100
+        worst:
+            100
+        thresh:
+            0
+        when_failed:
+            
+        flags:
+            value:
+                50
+            string:
+              

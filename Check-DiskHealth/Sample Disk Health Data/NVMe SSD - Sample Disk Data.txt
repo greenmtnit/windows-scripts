@@ -1,0 +1,159 @@
+# SAMPLE NVME SSD DATA
+
+Checking SMART data for /dev/sda
+    Model: SAMSUNG MZVLB512HBJQ-000L7
+    Serial number: S4ENNF2N380523
+json_format_version:
+smartctl:
+    version:
+    svn_revision:
+        5338
+    platform_info:
+        x86_64-w64-mingw32-w11-b26100
+    build_info:
+        (sf-7.3-1)
+    argv:
+        Length:
+            8
+        Length:
+            2
+        Length:
+            2
+        Length:
+            8
+    exit_status:
+        0
+local_time:
+    time_t:
+        1773324513
+    asctime:
+        Thu Mar 12 10:08:33 2026 EDT
+device:
+    name:
+        /dev/sda
+    info_name:
+        /dev/sda
+    type:
+        nvme
+    protocol:
+        NVMe
+model_name:
+    SAMSUNG MZVLB512HBJQ-000L7
+serial_number:
+    S4ENNF2N380523
+firmware_version:
+    5M2QEXF7
+nvme_pci_vendor:
+    id:
+        5197
+    subsystem_id:
+        5197
+nvme_ieee_oui_identifier:
+    9528
+nvme_total_capacity:
+    512110190592
+nvme_unallocated_capacity:
+    0
+nvme_controller_id:
+    4
+nvme_version:
+    string:
+        1.3
+    value:
+        66304
+nvme_number_of_namespaces:
+    1
+nvme_namespaces:
+    id:
+        1
+    size:
+        blocks:
+            1000215216
+        bytes:
+            512110190592
+    capacity:
+        blocks:
+            1000215216
+        bytes:
+            512110190592
+    utilization:
+        blocks:
+            587560616
+        bytes:
+            300831035392
+    formatted_lba_size:
+        512
+    eui64:
+        oui:
+            9528
+        ext_id:
+            562671202815
+user_capacity:
+    blocks:
+        1000215216
+    bytes:
+        512110190592
+logical_block_size:
+    512
+smart_support:
+    available:
+        True
+    enabled:
+        True
+smart_status:
+    passed:
+        True
+    nvme:
+        value:
+            0
+nvme_smart_health_information_log:
+    critical_warning:
+        0
+    temperature:
+        64
+    available_spare:
+        100
+    available_spare_threshold:
+        10
+    percentage_used:
+        3
+    data_units_read:
+        49365852
+    data_units_written:
+        62856872
+    host_reads:
+        615292831
+    host_writes:
+        1135377212
+    controller_busy_time:
+        2968
+    power_cycles:
+        782
+    power_on_hours:
+        3200
+    unsafe_shutdowns:
+        57
+    media_errors:
+        0
+    num_err_log_entries:
+        5722
+    warning_temp_time:
+        0
+    critical_comp_time:
+        0
+    temperature_sensors:
+temperature:
+    current:
+        64
+power_cycle_count:
+    782
+power_on_time:
+    hours:
+        3200
+    SMART status: PASSED. Note: this does not always mean the disk is healthy.
+    Power cycle count: 782. Max is set to 4000.
+    Power on time: 3200. Max is set to 70000.
+    Temperature: 64. Max is set to 70.
+    Could not retrieve ATA SMART Attributes table. This is normal for some disks, such as NVMe drives.
+    Drive is not capable of self-tests. This is normal for some disks, such as NVMe drives.
+    Disk appears to be healthy.
