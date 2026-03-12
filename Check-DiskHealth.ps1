@@ -143,7 +143,7 @@ function Check-Threshold {
         [int]$Threshold,
         [string]$ParameterName
     )
-    if (-not $Value) {
+    if ($null -eq $Value) {
         Write-IndentedHost "Unable to obtain $ParameterName."
         return $false
     }
