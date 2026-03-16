@@ -1,5 +1,5 @@
 <# 
-    Get-HardwareBirthDate.ps1.OLD
+    Get-HardwareBirthDate.ps1
     
     OLD VERSION - HAS BEEN UPDATED TO USE SYNCRO WARRANTY TRACKING
     
@@ -30,12 +30,12 @@ function Check-VM {
     return $false
 }
 
-# Warranty Vendor API Keys
-$DellClientID = "YOURDELLCLIENTIDHERE"
-$DellClientSecret = "YOURDELLCLIENTSECRETHERE"
-
 # Check if this is a VM
-if (-Not (Check-VM)) {
+if (Check-VM) {
+    $warStartDate = "N/A (VM)"
+}
+
+else { # Not a VM
 
     $ServiceTag = Get-CimInstance Win32_BIOS | Select-Object -ExpandProperty SerialNumber
     $Mfg = Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Manufacturer
@@ -186,11 +186,6 @@ if (-Not (Check-VM)) {
         }
     }
 
-}
-
-# If running in a VM
-else {
-    $warStartDate = "N/A (VM)"
 }
 
 if (Get-Module | Where-Object { $_.ModuleBase -match 'Syncro' }) {
