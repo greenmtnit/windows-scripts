@@ -1,28 +1,24 @@
 <# 
     Get-HardwareBirthDate.ps1
-    
-    OLD VERSION - HAS BEEN UPDATED TO USE SYNCRO WARRANTY TRACKING
-    
+      
     Determines birth date of a computer asset.
 
-    Uses Dell and Lenovo APIs to look up the warranty start date for the asset.
-    For other manufacturers, uses fallback methods based on BIOS release date and the OS install date.
+    Uses the warranty start date from Syncro's built-in warranty tracking.
+    If the built-in warranty tracking data is missing or Unknown, the script uses fallback methods based on BIOS release date and the OS install date.
     Dates generated with fallback methods are appended with (Estimated)
 
     Writes the output to a Syncro asset custom field named "Birth Date".
     
     Syncro Script Variables:
-    $existingBirthDate - Existing Syncro platform asset custom field "Birth Date"
-    
-    Adding Dell API Keys:
-    $DellClientID - Dell API key ID from Dell Tech Direct (https://tdm.dell.com/service-page/api)
-    $DellClientSecret - Dell API Secret from Dell Tech Direct
+    $AssetBirthDate - Existing Syncro platform asset custom field "Birth Date"
+    $AssetWarrantyStartDate - Syncro platform var {{asset_warranty_start_date}} (from built-in warranty tracking)
     
 #>
 
-if ($null -ne $env:SyncroModule) { Import-Module $env:SyncroModule -DisableNameChecking }
+Import-Module $env:SyncroModule
 
-function Check-VM {
+# Function to check if running in a virtual machine
+function Check-VM { 
     $model = Get-CimInstance Win32_ComputerSystem | select Model
     if ($model -match "virtual") {
         return $true
@@ -32,114 +28,20 @@ function Check-VM {
 
 # Check if this is a VM
 if (Check-VM) {
-    $warStartDate = "N/A (VM)"
+    $discoveredBirthDate = "N/A (VM)"
 }
 
-else { # Not a VM
-
-    $ServiceTag = Get-CimInstance Win32_BIOS | Select-Object -ExpandProperty SerialNumber
-    $Mfg = Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Manufacturer
-    $Lenovo = "LENOVO*"
-    $Dell = "DELL*"
-    $today = Get-Date -Format yyyy-MM-dd
-
-    switch -Wildcard ($Mfg) {
-        $Lenovo {
-            $APIURL = "https://pcsupport.lenovo.com/us/en/api/v4/mse/getproducts?productId=$ServiceTag"
-            $WarReq = Invoke-RestMethod -Uri $APIURL -Method Get
-
-            if ($WarReq.id) {
-                $APIURL = "https://pcsupport.lenovo.com/us/en/products/$($WarReq.id)/warranty"
-                $WarReq = Invoke-RestMethod -Uri $APIURL -Method Get
-                $search = $WarReq | Select-String -Pattern "var ds_warranties = window.ds_warranties \|\| (.*);[\r\n]*"
-                $jsonWarranties = $search.Matches.Groups[1].Value | ConvertFrom-Json
-            }
-
-            if ($jsonWarranties.BaseWarranties) {
-                $warfirst = $jsonWarranties.BaseWarranties | Sort-Object -Property [DateTime]End | Select-Object -First 1
-                $warlatest = $jsonWarranties.BaseWarranties | Sort-Object -Property [DateTime]End | Select-Object -Last 1
-                $WarObj = [PSCustomObject]@{
-                    'Serial' = $jsonWarranties.Serial
-                    'Warranty Product name' = $jsonWarranties.ProductName
-                    'StartDate' = [DateTime]$warfirst.Start
-                    'EndDate' = [DateTime]$warlatest.End
-                    'Warranty Status' = $warlatest.StatusV2
-                    'Client' = $Client
-                    'Product Image' = $jsonWarranties.ProductImage
-                    'Warranty URL' = $jsonWarranties.WarrantyUpgradeURLInfo.WarrantyURL
-                }
-                $warStartDate = [DateTime]$warfirst.Start
-                $warStartDate = $warStartDate.ToShortDateString()
-                $warEndDate = [DateTime]$warlatest.End
-                $warEndDate = $warEndDate.ToShortDateString()
-            } 
-            else {
-                $WarObj = [PSCustomObject]@{
-                    'Serial' = $SourceDevice
-                    'Warranty Product name' = 'Could not get warranty information'
-                    'StartDate' = $null
-                    'EndDate' = $null
-                    'Warranty Status' = 'Could not get warranty information'
-                    'Client' = $Client
-                    'Product Image' = ""
-                    'Warranty URL' = ""
-                }
-                $warStartDate = $null
-                $warEndDate = $null
-            }
-        }
-        $Dell {
-            $AuthURI = "https://apigtwb2c.us.dell.com/auth/oauth/v2/token"
-            if ($Global:TokenAge -lt (Get-Date).AddMinutes(-55)) { $global:Token = $null }
-            if ($null -eq $global:Token) {
-                $OAuth = "$DellClientID`:$DellClientSecret"
-                $Bytes = [System.Text.Encoding]::ASCII.GetBytes($OAuth)
-                $EncodedOAuth = [Convert]::ToBase64String($Bytes)
-                $HeadersAuth = @{ "Authorization" = "Basic $EncodedOAuth" }
-                $AuthBody = 'grant_type=client_credentials'
-                $AuthResult = Invoke-RestMethod -Method Post -Uri $AuthURI -Body $AuthBody -Headers $HeadersAuth
-                $global:Token = $AuthResult.access_token
-                $Global:TokenAge = Get-Date
-            }
-
-            $HeadersReq = @{ "Authorization" = "Bearer $global:Token" }
-            $ReqBody = @{ servicetags = $ServiceTag }
-            $WarReq = Invoke-RestMethod -Uri "https://apigtwb2c.us.dell.com/PROD/sbil/eapi/v5/asset-entitlements" -Headers $HeadersReq -Body $ReqBody -Method Get -ContentType "application/json"
-            $warlatest = $WarReq.entitlements.enddate | Sort-Object | Select-Object -Last 1
-            $WarrantyState = if ($warlatest -le $today) { "Expired" } else { "OK" }
-            if ($WarReq.entitlements.serviceleveldescription) {
-                $WarObj = [PSCustomObject]@{
-                    'Serial' = $SourceDevice
-                    'Warranty Product name' = $WarReq.entitlements.serviceleveldescription -join "`n"
-                    'StartDate' = (($WarReq.entitlements.startdate | Sort-Object -Descending | Select-Object -Last 1) -split 'T')[0]
-                    'EndDate' = (($WarReq.entitlements.enddate | Sort-Object | Select-Object -Last 1) -split 'T')[0]
-                    'Warranty Status' = $WarrantyState
-                    'Client' = $Client
-                }
-                $warStartDate = (($WarReq.entitlements.startdate | Sort-Object -Descending | Select-Object -Last 1) -split 'T')[0]
-                $warEndDate = (($WarReq.entitlements.enddate | Sort-Object | Select-Object -Last 1) -split 'T')[0]
-            } 
-            else {
-                $WarObj = [PSCustomObject]@{
-                    'Serial' = $SourceDevice
-                    'Warranty Product name' = 'Could not get warranty information'
-                    'StartDate' = $null
-                    'EndDate' = $null
-                    'Warranty Status' = 'Could not get warranty information'
-                    'Client' = $Client
-                }
-                $warStartDate = $null
-                $warEndDate = $null
-            }
-        }
-        default {
-            $warStartDate = $null
-            $warEndDate = $null
-        }
+else { # Not a VM. Get birth date.
+  
+    # Use Syncro built-in warranty tracking data, if present
+    if (($AssetWarrantyStartDate) -and ($AssetWarrantyStartDate -ne "Unknown")) {
+        $discoveredBirthDate = (Get-Date $AssetWarrantyStartDate -Format "MM/dd/yyyy")
+        Write-Host "Found birth date $discoveredBirthDate from Syncro's built-in warranty tracking."
     }
 
-    # If lookup fails, use fallback methods
-    if ($warStartDate -eq $null) {
+    else {
+        Write-Host "Start date from Syncro's built-in warranty tracking is not present or Unknown. Using fallback methods."
+        
         # Check BIOS release date
         $biosDate = Get-Date (Get-CimInstance -Class Win32_BIOS).ReleaseDate -Format "MM/dd/yyyy"
         
@@ -148,49 +50,58 @@ else { # Not a VM
 
         # Use the older of the two as a best guess for age
         if ($biosDate -lt $osInstallDate) {
-            $warStartDate = $biosDate
+            $discoveredBirthDate = $biosDate
+            Write-Host "Using BIOS date as estimated birth date: $discoveredBirthDate"
         } else {
-            $warStartDate = $osInstallDate
+            $discoveredBirthDate = $osInstallDate
+            Write-Host "Using estimated OS install date as estimated birth date: $discoveredBirthDate"
         }
-        $warStartDate += " (Estimated)"
+        $discoveredBirthDate += " (Estimated)"
     }
+}
 
+# SANITY CHECK - make sure we're not overwriting with a newer date
+# Check if existing date is present
+if ($AssetBirthDate) {
+    
+    Write-Host "Found existing Birth Date field value: $AssetBirthDate"
+  
+    # Remove "(Estimated)" from variables, if present - strip out just the date
 
-    # SANITY CHECK - make sure we're not overwriting with a newer date
-
-    # Check if existing date is present
-    if ($existingBirthDate -ne "" -and $existingBirthDate -ne $null -and (Test-Path variable:\existingBirthDate)) {
-      
-        # Remove "(Estimated)" from the existing fields, if present - strip out just the date
-
-        $pattern = "(\d{2}/\d{2}/\d{4})"
-        if ($existingBirthDate -match $pattern) {
-            $dateOnly = $matches[1]
-            $existingDate = $dateOnly
-        }
-        if ($warStartDate -match $pattern) {
-            $dateOnly = $matches[1]
-            $newDate = $dateOnly
-        }   
-        
-        $existingDate = Get-Date $existingDate
-        $newDate = Get-Date $newDate
-            
-        if ($newDate -gt $existingDate) {
-            Write-Host "Error! Detected birth date newer than the as existing field. Will not overwrite."
-            Exit 0
-        }
-        if ($newDate -eq $existingDate) {
-            # Dates are the same. No update needed.
-            Exit 0
-        }
+    $pattern = "(\d{2}/\d{2}/\d{4})"
+    if ($AssetBirthDate -match $pattern) {
+        $dateOnly = $matches[1]
+        $AssetBirthDate = $dateOnly
     }
-
+    
+    if ($discoveredBirthDate -match $pattern) {
+        $dateOnly = $matches[1]
+        $discoveredBirthDateCleaned = $dateOnly
+    }
+    else { # If no (estimated) in $discoveredBirthDate, use as-is
+        $discoveredBirthDateCleaned = $discoveredBirthDate
+    }
+    
+    $AssetBirthDate = Get-Date $AssetBirthDate
+    $discoveredBirthDateCleaned = Get-Date $discoveredBirthDateCleaned
+               
+    if ($discoveredBirthDateCleaned -gt $AssetBirthDate) { 
+        # Discovered birth date is newer than existing date. Older value is likely more accurate, so don't overwrite it.
+        Write-Host "Warning! The discovered birth date is newer than the existing asset Birth Date field. Will not overwrite."
+        Exit 0
+    }
+    elseif ($discoveredBirthDateCleaned -eq $AssetBirthDate) {
+        # Dates are the same. No update needed.
+        Write-Host "Discovered birth date is the same as the existing asset Birth Date field. No update needed."
+        Exit 0
+    }
+    else {
+        Write-Host "Discovered birth date is older than existing asset Birth Date field. Will overwrite."
+    }
 }
 
-if (Get-Module | Where-Object { $_.ModuleBase -match 'Syncro' }) {
-    Set-Asset-Field -Name "Birth Date" -Value "$warStartDate"
-}
-else {
-    Write-Host $warStartDate
-}
+# Write birth date to asset custom field
+Write-Host "Writing value $discoveredBirthDate to asset Birth Date field"
+Set-Asset-Field -Name "Birth Date" -Value "$discoveredBirthDate"
+
+
