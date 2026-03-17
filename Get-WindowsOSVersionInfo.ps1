@@ -95,6 +95,9 @@ function Get-OSInfo { # https://gist.github.com/asheroto/cfa26dd00177a03c81635ea
 
         # Get OS version details (as version object)
         $versionValue = [System.Environment]::OSVersion.Version
+        
+        # Get Update Build Revision (UBR)
+        $UBR = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name UBR).UBR
 
         # Determine product type
         # Reference: https://learn.microsoft.com/en-us/dotnet/api/microsoft.powershell.commands.producttype?view=powershellsdk-1.1.0
@@ -118,6 +121,7 @@ function Get-OSInfo { # https://gist.github.com/asheroto/cfa26dd00177a03c81635ea
             NumericVersion = $numericVersion
             EditionId      = $editionIdValue
             Version        = $versionValue
+            UBR            = $UBR
             Architecture   = $architecture
         }
 
@@ -207,7 +211,7 @@ function Test-Windows10ESU {
 
 ## MAIN SCRIPT ACTION
 
-# Get OS Info
+# Get OS Info and print it
 $osInfo = Get-OSInfo
 $osInfo | Format-List
 
