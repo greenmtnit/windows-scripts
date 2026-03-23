@@ -6,7 +6,8 @@
     Syncro Script Variables:
         $EvoDeploymentToken - Platform Variable. Set to Customer Custom Field "Evo Deployment Token". Paste the client's deployment token in this field in Syncro.
         $SkipServerCheck - Dropdown. String values "true" or "false". Default: "false". If true, the server check will be skipped and Evo will be installed on servers. With the default "true", the script will check if running on a server OS and if yes, it will skip the install, unless Evo is already installed. If the script detects Evo is already installed on a server, it will attempt to ugprade it, regardless of $SkipServerCheck.
-        
+        $forceBranding - Dropdown. String values "true" or "false". Default: "false". If true, custom branding will be applied in every case, regardless of if Evo is already installed.
+
     Summary:
         Checks if Evo is already installed.
         Downloads official Evo deployment script: https://raw.githubusercontent.com/evosecurity/EvoWindowsAgentDeploymentScripts/refs/heads/master/InstallEvoAgent.ps1
@@ -78,11 +79,11 @@ catch {
 
     if ($msg -match "The currently installed version is already at the most recent") {
         Write-Host "Evo is already installed and up to date."
-        $installSucceeded = $true
+        $noInstallNeeded = $true
     }
     elseif ($msg -match "The currently installed version is more recent than that downloaded") {
         Write-Host "Installed Evo version is newer than the installer version. No action taken."
-        $installSucceeded = $true
+        $noInstallNeeded = $true
     }
     else {
         Write-Warning "Evo installer encountered an error:"
@@ -91,18 +92,20 @@ catch {
     }
 }
 
-if ($installSucceeded) {
+if ($installSucceeded -or $noInstallNeeded) {
     Write-Host "Evo deployment completed successfully."
     Close-Rmm-Alert -Category "Evo Deployment" -CloseAlertTicket "true"
-    
-    # BRANDING SECTION
+}
+
+# BRANDING SECTION
+if ($installSucceeded -or ($forceBranding -eq "true")) {
+    Write-Host "Applying branding"
+
     # Dowload Logo File
     $logoURL = "https://s3.us-east-1.wasabisys.com/gmits-public/gmits_logo_evo.png"
     $logoPath = "C:\Program Files\Green Mountain IT Solutions\Scripts\gmits_logo_evo.png"
     Invoke-WebRequest -Uri $logoURL -OutFile $logoPath
 
-    Write-Host "Applying branding"
-    
     # Set Branding Registry Values
     $CustomizationParams = @{
         BrandLogoPath   = $logoPath
