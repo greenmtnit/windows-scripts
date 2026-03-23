@@ -14,6 +14,7 @@
         If Evo is not installed, runs official install script normally.
         Throws a Syncro RMM alert if install fails.
         Clears open Evo Deployment RMM alerts (if any) if install succeeds.
+        Applies custom branding (https://helpdesk.evosecurity.com/product-information/5t3848WNzTVsSU4KkXazrX/end-user-elevation-custom-branding/69qPZzsDFUEA5aJtyDrbkf)
     
 #>
 
@@ -93,4 +94,36 @@ catch {
 if ($installSucceeded) {
     Write-Host "Evo deployment completed successfully."
     Close-Rmm-Alert -Category "Evo Deployment" -CloseAlertTicket "true"
+    
+    # BRANDING SECTION
+    # Dowload Logo File
+    $logoURL = "https://s3.us-east-1.wasabisys.com/gmits-public/gmits_logo_evo.png"
+    $logoPath = "C:\Program Files\Green Mountain IT Solutions\Scripts\gmits_logo_evo.png"
+    Invoke-WebRequest -Uri $logoURL -OutFile $logoPath
+
+    Write-Host "Applying branding"
+    
+    # Set Branding Registry Values
+    $CustomizationParams = @{
+        BrandLogoPath   = $logoPath
+        WindowTitle     = "Privilege Request"
+        HeaderText      = "Administrator Privileges Required"
+        GeneralPrompt   = "Would you like to request administrator privileges for this action?"
+        ReasonLine1     = "Please enter the reason for your request below."
+        ProcessingText  = "Validating request..."
+        ReasonLine2     = "NOTE: REQUESTS ARE NOT RECEIVED AUTOMATICALLY. Please email support@greenmtnit.com after making your request."
+    }
+
+    $RootCustomizationPath = "HKLM:\\Software\\EvoSecurity\\EvoLogin-CP\\Customization"
+
+    if (-not (Test-Path $RootCustomizationPath)) {
+        New-Item $RootCustomizationPath
+    }
+
+    foreach ($key in $CustomizationParams.Keys) {
+        $value = $CustomizationParams[$key]
+        Set-ItemProperty $RootCustomizationPath "ConsentUI.$Key" "$value"
+    }
+
 }
+
