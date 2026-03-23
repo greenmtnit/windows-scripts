@@ -21,6 +21,20 @@
 
 Import-Module $env:SyncroModule
 
+# Check for AutoElevate, to avoid conflicts
+if (Get-Service -Name "AutoElevateAgent" -ErrorAction SilentlyContinue) { 
+    Write-Host "Detected conflicting software AutoElevate. Evo install will be aborted."
+    exit 1
+}
+
+# Check for deployment token
+if (-not $EvoDeploymentToken) {
+    $msg = "Error! Evo deployment token not found!"
+    Write-Host $msg
+    Rmm-Alert -Category "Evo Deployment" -Body "Evo deployment failed: $msg"
+    exit 1
+}
+
 # Detect existing installation
 $installed = Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* `
     -ErrorAction SilentlyContinue |
