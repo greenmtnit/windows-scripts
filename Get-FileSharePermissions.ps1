@@ -6,7 +6,7 @@
     
 #>
 
-$timestamp = Get-Date -Format yyyyMMddhhmm
+$timestamp = Get-Date -Format yyyyMMdd_HHmmss
 $hostname = $env:COMPUTERNAME
 $OutFile = "C:\!TECH\FileSharePermissions_${hostname}_$timestamp.csv"
 
