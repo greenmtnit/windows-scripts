@@ -6,8 +6,9 @@
     Syncro Script Variables:
         $EvoDeploymentToken - Platform Variable. Set to Customer Custom Field "Evo Deployment Token". Paste the client's deployment token in this field in Syncro.
         $SkipServerCheck - Dropdown. String values "true" or "false". Default: "false". If true, the server check will be skipped and Evo will be installed on servers. With the default "true", the script will check if running on a server OS and if yes, it will skip the install, unless Evo is already installed. If the script detects Evo is already installed on a server, it will attempt to ugprade it, regardless of $SkipServerCheck.
-        $forceBranding - Dropdown. String values "true" or "false". Default: "false". If true, custom branding will be applied in every case, regardless of if Evo is already installed.
-
+        $ForceBranding - Dropdown. String values "true" or "false". Default: "false". If true, custom branding will be applied in every case, regardless of if Evo is already installed.
+        $Remove - Dropdown. String values "true" or "false". Default: "false". If true, remove the Evo agent.
+    
     Summary:
         Checks if Evo is already installed.
         Downloads official Evo deployment script: https://raw.githubusercontent.com/evosecurity/EvoWindowsAgentDeploymentScripts/refs/heads/master/InstallEvoAgent.ps1
@@ -22,9 +23,11 @@
 Import-Module $env:SyncroModule
 
 # Check for AutoElevate, to avoid conflicts
-if (Get-Service -Name "AutoElevateAgent" -ErrorAction SilentlyContinue) { 
-    Write-Host "Detected conflicting software AutoElevate. Evo install will be aborted."
-    exit 1
+if ($Remove -ne "true") {
+    if (Get-Service -Name "AutoElevateAgent" -ErrorAction SilentlyContinue) { 
+        Write-Host "Detected conflicting software AutoElevate. Evo install will be aborted."
+        exit 1
+    }
 }
 
 # Check for deployment token
@@ -41,7 +44,11 @@ $installed = Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Un
     Where-Object { $_.DisplayName -in @("Evo Agent","Evo Secure Login") }
 
 $upgradeMode = $false
-if ($installed) {
+
+if ($Remove -eq "true") {
+    Write-Host "Remove is set. Removing Evo!"
+}
+elseif ($installed) {
     $upgradeMode = $true
     Write-Host "Existing Evo installation detected. Running install script in upgrade mode."
 }
@@ -76,7 +83,10 @@ catch {
 
 try {
     Write-Host "Running Evo installer script..."
-    if ($upgradeMode) {
+    if ($Remove -eq "true") {
+        $output = & $scriptPath -Remove *>&1
+    }
+    elseif ($upgradeMode) {
         $output = & $scriptPath -DeploymentToken $EvoDeploymentToken -Upgrade *>&1
     }
     else {
@@ -112,7 +122,7 @@ if ($installSucceeded -or $noInstallNeeded) {
 }
 
 # BRANDING SECTION
-if ($installSucceeded -or ($forceBranding -eq "true")) {
+if (($installSucceeded -or ($ForceBranding -eq "true")) -and ($Remove -ne "true")) {
     Write-Host "Applying branding"
 
     # Dowload Logo File
