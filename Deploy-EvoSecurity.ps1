@@ -18,6 +18,9 @@
         Clears open Evo Deployment RMM alerts (if any) if install succeeds.
         Applies custom branding (https://helpdesk.evosecurity.com/product-information/5t3848WNzTVsSU4KkXazrX/end-user-elevation-custom-branding/69qPZzsDFUEA5aJtyDrbkf)
     
+    Logging & Troubleshooting:
+        Check log file:  C:\Windows\temp\EvoAgent_install.log
+
 #>
 
 Import-Module $env:SyncroModule
@@ -87,10 +90,10 @@ try {
         $output = & $scriptPath -Remove *>&1
     }
     elseif ($upgradeMode) {
-        $output = & $scriptPath -DeploymentToken $EvoDeploymentToken -Upgrade *>&1
+        $output = & $scriptPath -DeploymentToken $EvoDeploymentToken -Upgrade -Log *>&1
     }
     else {
-        $output = & $scriptPath -DeploymentToken $EvoDeploymentToken *>&1
+        $output = & $scriptPath -DeploymentToken $EvoDeploymentToken -Log *>&1
     }
 
     Write-Host ($output | Out-String)
