@@ -15,7 +15,7 @@
         Type: Dropdown
         Values: "true", "false"
         Default: "false"
-        Description: Set to "true" to print the full output of the source script. Set to "false" to supress.
+        Description: Set to "true" to print the full output of the source script. Set to "false" to suppress.
 #>
 
 Import-Module $env:SyncroModule
