@@ -5,7 +5,7 @@
     
     Syncro Script Variables:
         $EvoDeploymentToken - Platform Variable. Set to Customer Custom Field "Evo Deployment Token". Paste the client's deployment token in this field in Syncro.
-        $SkipServerCheck - Dropdown. String values "true" or "false". Default: "false". If true, the server check will be skipped and Evo will be installed on servers. With the default "true", the script will check if running on a server OS and if yes, it will skip the install, unless Evo is already installed. If the script detects Evo is already installed on a server, it will attempt to ugprade it, regardless of $SkipServerCheck.
+        $EvoServerToken - Platform Variable. Set to Customer Custom Field "Evo Server Deployment Token". Paste the client's SERVER deployment token in this field in Syncro.
         $ForceBranding - Dropdown. String values "true" or "false". Default: "false". If true, custom branding will be applied in every case, regardless of if Evo is already installed.
         $Remove - Dropdown. String values "true" or "false". Default: "false". If true, remove the Evo agent.
     
@@ -33,14 +33,6 @@ if ($Remove -ne "true") {
     }
 }
 
-# Check for deployment token
-if (-not $EvoDeploymentToken) {
-    $msg = "Error! Evo deployment token not found!"
-    Write-Host $msg
-    Rmm-Alert -Category "Evo Deployment" -Body "Evo deployment failed: $msg"
-    exit 1
-}
-
 # Detect existing installation
 $installed = Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* `
     -ErrorAction SilentlyContinue |
@@ -56,18 +48,36 @@ elseif ($installed) {
     Write-Host "Existing Evo installation detected. Running install script in upgrade mode."
 }
 else {
-    # Check if running on a server without Evo installed already. If so, exit.
-    if ($SkipServerCheck -eq "true") {
-        Write-Host "NOTICE: Skipping server check."
+    Write-Host "Evo not currently installed. Running install."
+}
+
+# Server Check
+$osInfo = Get-CimInstance -ClassName Win32_OperatingSystem
+if ($osInfo.ProductType -ne 1) {
+    Write-Host "This is a server. Using server token."
+    if (-not $EvoServerToken) {
+        # Check for deployment token
+        $msg = "Error! Evo server deployment token not found!"
+        Write-Host $msg
+        Rmm-Alert -Category "Evo Deployment" -Body "Evo deployment failed: $msg"
+        exit 1
     }
     else {
-        $osInfo = Get-CimInstance -ClassName Win32_OperatingSystem
-        if ($osInfo.ProductType -ne 1) {
-          Write-Host "This is a server and no existing Evo install was detected. We do not typically install Evo on servers. EXITING"
-          exit 0
-        }
+        $DeploymentToken = $EvoServerToken
     }
-    Write-Host "Evo not currently installed. Running install."
+}
+
+else { # Not a server. Use regular token.
+    if (-not $EvoDeploymentToken) {
+        # Check for deployment token
+        $msg = "Error! Evo deployment token not found!"
+        Write-Host $msg
+        Rmm-Alert -Category "Evo Deployment" -Body "Evo deployment failed: $msg"
+        exit 1
+    }
+    else {
+        $DeploymentToken = $EvoDeploymentToken
+    }
 }
 
 # Download official Evo install script
@@ -90,10 +100,10 @@ try {
         $output = & $scriptPath -Remove *>&1
     }
     elseif ($upgradeMode) {
-        $output = & $scriptPath -DeploymentToken $EvoDeploymentToken -Upgrade -Log *>&1
+        $output = & $scriptPath -DeploymentToken $DeploymentToken -Upgrade -Log *>&1
     }
     else {
-        $output = & $scriptPath -DeploymentToken $EvoDeploymentToken -Log *>&1
+        $output = & $scriptPath -DeploymentToken $DeploymentToken -Log *>&1
     }
 
     Write-Host ($output | Out-String)
