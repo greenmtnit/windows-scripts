@@ -101,6 +101,7 @@ $ApplicationList = @(
     "Aspia*"
     "Augmentt*"
     "Auvik*"
+    "AutoElevate*"
     "avast*"
     "avg*"
     "avira*"
