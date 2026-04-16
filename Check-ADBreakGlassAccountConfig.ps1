@@ -41,7 +41,7 @@ Write-Host "Checking user: $Username"
 $warnings = @()
 
 # 1. Domain Admins membership
-$isDomainAdmin = $user.MemberOf -match "CN=Domain Admins,CN=Users,DC="
+$isDomainAdmin = Get-ADGroupMember -Identity "Domain Admins" | Where-Object {$_.name -eq $username}
 if ($isDomainAdmin) {
     Write-Host "OK: User IS a member of the Domain Admins group."
 }
@@ -52,7 +52,7 @@ else {
 }
 
 # 2. Enterprise Admins membership  
-$isEnterpriseAdmin = $user.MemberOf -match "CN=Enterprise Admins,CN=Users,DC="
+$isEnterpriseAdmin = Get-ADGroupMember -Identity "Enterprise Admins" | Where-Object {$_.name -eq $username}
 if ($isEnterpriseAdmin) {
     Write-Host "OK: User IS a member of the Enterprise Admins group."
 }
@@ -100,10 +100,10 @@ else {
 }
 
 if ($warnings) {
-    Write-Host "CONFIGURATION ERRORS FOUND!"
+    Write-Host "`nCONFIGURATION ERRORS FOUND!"
     Rmm-Alert -Category $alertCategory -Body $msg
 }
 else {
-    Write-Host "No issues found. Configuration is correct."
+    Write-Host "`nNo issues found. Configuration is correct."
     Close-Rmm-Alert -Category $alertCategory -CloseAlertTicket "true"
 }
