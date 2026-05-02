@@ -150,7 +150,7 @@ $ApplicationList = @(
     "ITarian RMM*"
     "ITSupport247*"
     "ISL AlwaysOn*"
-    "ISL Light*"
+    # "ISL Light*" # Used by GMITS
     "Join.me*"
     "Jump Desktop*"
     "Kaseya*"
