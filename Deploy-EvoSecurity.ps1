@@ -8,6 +8,9 @@
         $EvoServerToken - Platform Variable. Set to Customer Custom Field "Evo Server Deployment Token". Paste the client's SERVER deployment token in this field in Syncro.
         $ForceBranding - Dropdown. String values "true" or "false". Default: "false". If true, custom branding will be applied in every case, regardless of if Evo is already installed.
         $Remove - Dropdown. String values "true" or "false". Default: "false". If true, remove the Evo agent.
+        $CustomInstallerURL - Runtime. Enter a URL of a custom Evo agent download. This can be used to install older versions of the agent.
+            Download URLs are in this format: https://download.evosecurity.com/release/credpro/credential-provider-v2.5.2.0_x64.zip.
+            To download another version, change the version number in the URL.
     
     Summary:
         Checks if Evo is already installed.
@@ -37,6 +40,7 @@ if ($Remove -ne "true") {
 $installed = Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* `
     -ErrorAction SilentlyContinue |
     Where-Object { $_.DisplayName -in @("Evo Agent","Evo Secure Login") }
+$evoVersion = ($installed | Select -First 1).DisplayVersion
 
 $upgradeMode = $false
 
@@ -45,10 +49,61 @@ if ($Remove -eq "true") {
 }
 elseif ($installed) {
     $upgradeMode = $true
-    Write-Host "Existing Evo installation detected. Running install script in upgrade mode."
+    Write-Host "Existing Evo installation detected. Version: $EvoVerision. Running install script in upgrade mode."
 }
 else {
     Write-Host "Evo not currently installed. Running install."
+}
+
+# Check for and download optional custom installer
+if ($CustomInstallerURL) {
+    Write-Host "NOTICE: `$CustomInstallerURL was passed. Running custom install."
+    $CustomInstall = $true
+    $CustomInstallerFileName = $CustomInstallerURL.Split('/')[-1]
+    $CustomInstallerPath = Join-Path $env:TEMP $CustomInstallerFileName
+
+    Write-Host "Downloading custom installer..."
+
+    try {
+        Invoke-WebRequest -Uri $CustomInstallerURL -OutFile $CustomInstallerPath -ErrorAction Stop
+    }
+    catch {
+        Write-Warning "Failed to download custom installer: $($_.Exception.Message)"
+        exit 1
+    }
+    
+    # If download is a ZIP, extract it and locate MSI
+    if ($CustomInstallerFileName -like "*.zip") {
+        Write-Host "Extracting $CustomInstallerFileName..."
+        $CustomInstallerExtractPath = Join-Path $env:TEMP ([System.IO.Path]::GetFileNameWithoutExtension($CustomInstallerFileName))
+        try {
+            Expand-Archive -Path $CustomInstallerPath -DestinationPath $CustomInstallerExtractPath -Force -ErrorAction Stop
+            Write-Host "Extracted to: $CustomInstallerExtractPath"
+        }
+        catch {
+            Write-Warning "Failed to extract zip: $($_.Exception.Message)"
+            exit 1
+        }
+        
+        $CustomInstallerMSIPath = Get-ChildItem -Path $CustomInstallerExtractPath -Filter "*.msi" -Recurse | Select-Object -First 1 -ExpandProperty FullName
+        if ($CustomInstallerMSIPath) {
+            Write-Host "Found MSI: $CustomInstallerMSIPath"
+        }
+        else {
+            Write-Warning "No .msi file found in extracted contents."
+            exit 1
+        }
+    }
+    
+    # If download is already an MSI, not a ZIP
+    elseif ($CustomInstallerFileName -like "*.msi") {
+        $CustomInstallerMSIPath = $CustomInstallerDownloadPath
+    }
+    
+    else {
+        Write-Host "Error locating MSI file in custom installer."
+        Exit 1
+    }
 }
 
 # Server Check
@@ -97,15 +152,28 @@ catch {
 try {
     Write-Host "Running Evo installer script..."
     if ($Remove -eq "true") {
+        Write-Host "Running: $scriptPath -Remove"
         $output = & $scriptPath -Remove *>&1
     }
     elseif ($upgradeMode) {
-        $output = & $scriptPath -DeploymentToken $DeploymentToken -Upgrade -Log *>&1
+        $params = @{
+            DeploymentToken = $DeploymentToken
+            Upgrade         = $true
+            Log             = $true
+        }
+        if ($CustomInstall -eq $true) { $params['MSIPath'] = $CustomInstallerMSIPath }
+        Write-Host "Running: $scriptPath $(($params.GetEnumerator() | ForEach-Object { "-$($_.Key) $($_.Value)" }) -join ' ')"
+        $output = & $scriptPath @params *>&1
     }
     else {
-        $output = & $scriptPath -DeploymentToken $DeploymentToken -Log *>&1
+        $params = @{
+            DeploymentToken = $DeploymentToken
+            Log             = $true
+        }
+        if ($CustomInstall -eq $true) { $params['MSIPath'] = $CustomInstallerMSIPath }
+        Write-Host "Running: $scriptPath $(($params.GetEnumerator() | ForEach-Object { "-$($_.Key) $($_.Value)" }) -join ' ')"
+        $output = & $scriptPath @params *>&1
     }
-
     Write-Host ($output | Out-String)
     
     $installSucceeded = $true
