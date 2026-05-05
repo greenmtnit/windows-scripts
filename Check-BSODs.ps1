@@ -76,7 +76,6 @@ Upload-File -FilePath $($latestDump.FullName)
 # Analyze BSOD
 
 # Download and run BlueScreenView
-# Download and run BlueScreenView
 try {
     Invoke-WebRequest -Uri "https://www.nirsoft.net/utils/bluescreenview.zip" -OutFile "$($ENV:Temp)\bluescreenview.zip"
     Expand-Archive "$($ENV:Temp)\bluescreenview.zip" -DestinationPath "$($ENV:Temp)" -Force
@@ -105,7 +104,7 @@ if ($BSODFilter) {
 
     $bsodTime = $BSODFilter.Timestamp
 
-    $message = "BSOD Found At`n$bsodTime`n`nBlueScreenView Analysis`nDriver: $($BSODFilter.CausedByDriver)`nError code: $($BSODFilter.Errorcode)`nReason: $($BSODFilter.Reason)`n"
+    $message = "BSOD Found. Crash time:`n$bsodTime`n`nBlueScreenView Analysis`nDriver: $($BSODFilter.CausedByDriver)`nError code: $($BSODFilter.Errorcode)`nReason: $($BSODFilter.Reason)`n"
 
     # Add the log message to the Syncro asset activity log
     Log-Activity -Message "$message" -EventName "BSOD Analysis"
@@ -135,6 +134,7 @@ if ($recentDumps.Count -le 1) {
     foreach ($dump in $previous) {
         $ticketNotes += "$($dump.LastWriteTime) - File: $($dump.Name)`n"
     }
+    $ticketNotes += "Note: these times are based on the Mimidump file write time and may not exactly match the actual crash time.`n"
 }
 
 # If the var $AssetBirthDate is set (this will be set elsewhere), use it to determine age of the computer asset.
