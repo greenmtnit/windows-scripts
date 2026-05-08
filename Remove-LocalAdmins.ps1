@@ -123,7 +123,9 @@ Write-Host "Getting exisiting members of local administrator group."
 $LocalAdmins = Get-LocalAdminsNet | Where-Object {
     $_.Name -ne "Administrator" -and
     $_.Name -ne "Domain Admins" -and
-    $_.Name -ne "Enterprise Admins"
+    $_.Name -ne "Enterprise Admins" -and
+    $_.Name -ne "~512EvoEUEAdmin~" -and
+    $_.Name -notlike "*greenmtnit.com"
 }
 $LocalAdmins | Format-Table
 
@@ -142,7 +144,9 @@ Write-Host "`nGetting members of local administrator group again, to confirm (sh
 $LocalAdmins = Get-LocalAdminsNet | Where-Object {
     $_.Name -ne "Administrator" -and
     $_.Name -ne "Domain Admins" -and
-    $_.Name -ne "Enterprise Admins"
+    $_.Name -ne "Enterprise Admins" -and
+    $_.Name -ne "~512EvoEUEAdmin~" -and
+    $_.Name -notlike "*greenmtnit.com"
 }
 $LocalAdmins | Format-Table
 
