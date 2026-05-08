@@ -49,7 +49,7 @@ if ($Remove -eq "true") {
 }
 elseif ($installed) {
     $upgradeMode = $true
-    Write-Host "Existing Evo installation detected. Version: $EvoVerision. Running install script in upgrade mode."
+    Write-Host "Existing Evo installation detected. Version: $EvoVersion. Running install script in upgrade mode."
 }
 else {
     Write-Host "Evo not currently installed. Running install."

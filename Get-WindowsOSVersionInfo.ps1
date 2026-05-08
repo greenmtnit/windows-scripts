@@ -27,14 +27,6 @@ $Windows10ESUYear = "1" # Current year for Windows 10 Extended Support updates. 
 # Alert Messages
 $AlertCategory = "Windows OS Version"
 
-# SCRIPT BLOCKS - For GUI Pop-Ups
-
-# FUNCTIONS
-function Check-Laptop {
-    $systemInfo = Get-CimInstance -ClassName Win32_ComputerSystem
-    return $systemInfo.PCSystemType -eq 2
-}
-
 function Get-OSInfo { # https://gist.github.com/asheroto/cfa26dd00177a03c81635ea774406b2b
     <#
         .SYNOPSIS
@@ -115,34 +107,21 @@ function Get-OSInfo { # https://gist.github.com/asheroto/cfa26dd00177a03c81635ea
         # Create and return custom object with the required properties
         $result = [PSCustomObject]@{
             Name           = $nameValue
+            Type           = $typeValue
+            EditionId      = $editionIdValue
+            Architecture   = $architecture
+            NumericVersion = $numericVersion
             ReleaseId      = $releaseIdValue
             DisplayVersion = $displayVersionValue
-            Type           = $typeValue
-            NumericVersion = $numericVersion
-            EditionId      = $editionIdValue
             Version        = $versionValue
+            Build          = $versionValue.Build
             UBR            = $UBR
-            Architecture   = $architecture
         }
 
         return $result
     } catch {
         Write-Error "Unable to get OS version details.`nError: $_"
         exit 1
-    }
-}
-
-function Sleep-Random {
-    param (
-        [int]$MaximumSeconds = 300
-    )
-    if ($RandomDelay -eq "true") {
-        $RandomSleep = Get-Random -Maximum $MaximumSeconds
-        Write-Host "Sleeping for $RandomSleep seconds"
-        Start-Sleep -Seconds $RandomSleep
-    }
-    else {
-        Write-Host "Random delay is not enabled. Skipping sleep."
     }
 }
 
@@ -209,11 +188,11 @@ function Test-Windows10ESU {
 }
 
 
-## MAIN SCRIPT ACTION
+## MAIN SCRIPT BEGINS
 
 # Get OS Info and print it
 $osInfo = Get-OSInfo
-$osInfo | Format-List
+$osInfo | Select-Object -Property Name,EditionID,Architecture,NumericVersion,DisplayVersion,Build,UBR | Format-List
 
 $currentBuild = $osInfo.Version.Build
 $currentName = $osInfo.Name
@@ -256,8 +235,6 @@ elseif ($osInfo.NumericVersion -eq "10") {
         }
     }
 }
-
-
 
 # Windows 11 Checks
 elseif ($osInfo.NumericVersion -eq "11") {
