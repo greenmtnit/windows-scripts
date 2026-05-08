@@ -59,9 +59,6 @@ Install-Windows11Version25H2FromIso.ps1
             Toggles whether to skip downloading the Windows 11 .iso
             Useful if the installer was downloaded previously, i.e. by a previous script run.
          
-        $LogOutput
-            Script runtime dropdown, strings "true" (default) or "false".
-            Toggles whether to log output to a file.
 
 #>
 
@@ -75,42 +72,44 @@ function Check-Laptop {
     return $systemInfo.PCSystemType -eq 2
 }
 
-# START LOGGING (if $LogOutput is set)
-if ($LogOutput -eq "true") {
-    ## Define the log directory and log file path
-    $logDirectory = "C:\!TECH\Windows11UpgradeScriptLogs"
-    $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
-    $logFile = "$logDirectory\Windows11Upgrade_$timestamp.txt"
-
-    # Create the log directory if it does not exist
-    if (-not (Test-Path -Path $logDirectory -ErrorAction SilentlyContinue)) {
-        New-Item -Path $logDirectory -ItemType Directory -Force | Out-Null
-    }
-
-    # Start logging to a transcript
-    Start-Transcript -Path $logFile -Append
-    Write-Host "Logging output to: $logFile"
+# Function to write to log file
+function Write-Log {
+    param(
+        [string]$Message,
+        [ValidateSet("INFO","WARN","ERROR")][string]$Level = "INFO"
+    )
+    $ts = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $entry = "[$ts] [$Level] $Message"
+    Add-Content -Path $script:LogFile -Value $entry
+    Write-Host $entry
 }
+
+
+# START LOGGING
+$logDir = "C:\!TECH\WindowsUpgradeLogs"
+$script:LogFile = "$logDir\WindowsIsoUpgrade_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
+
+New-Item -ItemType Directory $logDir
+New-Item $script:LogFile
 
 # CHECKS
 
 # Is this a laptop?
 if (-not ($SkipLaptopCheck -eq "true")) {
     if (Check-Laptop) {
-        Write-Host "This is a laptop. Will not run the upgrade. Exiting!"
-        if ($LogOutput -eq "true") { Stop-Transcript }
+        Write-Log -Level WARN -Message "This is a laptop. Will not run the upgrade. Exiting!"
         exit 0
     }
     else {
-        Write-Host "Detected this is NOT a laptop."
+        Write-Log "Detected this is NOT a laptop. Proceeding"
     }
 } else {
-    Write-Host "NOTICE: SkipLaptopCheck is set; skipping laptop check."
+    Write-Log "SkipLaptopCheck is set; skipping laptop check."
 }
 
 # Are we at 25H2 already? If so, bail from script.
 If ((Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name 'DisplayVersion').DisplayVersion -eq '25H2') {
-    Write-Output 'Host is already running version 25H2; no Update required - exiting.'
+    Write-Log 'Host is already running version 25H2; no Update required - exiting.'
     exit
 }
 
@@ -118,32 +117,31 @@ If ((Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Win
 if (-not ($SkipOfficialSupportCheck -eq "true")) {
     # Read $SupportsWindows11 platform var from Syncro
     if ($SupportsWindows11 -ne "Yes") {
-        Write-Host "This machine does not officially support Windows 11. Message: $SupportsWindows11. Exiting!"
-        if ($LogOutput -eq "true") { Stop-Transcript }
+        Write-Log -Level WARN -Message "This machine does not officially support Windows 11. Message: $SupportsWindows11. Exiting!"
         exit 0
     }
     else {
-        Write-Host "SupportsWindows11 is Yes. This machine does officially support Windows 11."
+        Write-Log "SupportsWindows11 is Yes. This machine does officially support Windows 11."
     }
 }
 else {
-    Write-Host "NOTICE: SkipOfficialSupportCheck is set; skipping Windows 11 official support check."
+    Write-Log "NOTICE: SkipOfficialSupportCheck is set; skipping Windows 11 official support check."
 }
 
 # Make sure at least 20GB are free
 $driveLetter = "C:"
-$disk = Get-WmiObject -Class Win32_LogicalDisk | Where-Object { $_.DeviceID -eq $driveLetter }
+$disk = Get-CimInstance -Class Win32_LogicalDisk | Where-Object { $_.DeviceID -eq $driveLetter }
 $freeSpaceGB = [math]::Round($disk.FreeSpace / 1GB, 2)
     
 if ($freeSpaceGB -lt 20) {
-    Write-Host "Available disk space on drive $driveLetter is less than 20GB ($freeSpaceGB GB). Will not proceed. Exiting!"
+    Write-Log -Level ERROR -Message "Available disk space on drive $driveLetter is less than 20GB ($freeSpaceGB GB). Will not proceed. Exiting!"
     Exit 1
 } 
 
 # DO UPGRADE
 # If we got here, all checks passed. Proceed with the Windows 11 Upgrade
 
-Write-Host "Proceeding with upgrade!"
+Write-Log "Proceeding with upgrade!"
 
 # Create the C:\!TECH directory if it doesn't exist
 if (!(Test-Path -Path "C:\!TECH" -PathType Container)) {
@@ -162,13 +160,13 @@ if (!(Test-Path C:\!TECH\\Windows11Setup\Logs)) {
 
 # 
 if ($SkipDownload -eq "true") {
-    Write-Host "NOTICE: SkipDownload is set; skipping downloading .iso."
+    Write-Log -Level WARN -Message "SkipDownload is set; skipping downloading .iso."
     
     $setupPath = "C:\!TECH\\Windows11Setup\Setup.exe"
     
     if (-Not (Test-Path $setupPath)) {
-        Write-Host "Setup file not found!"
-        Write-Host "ERROR: SkipDownload was set, but the installer does not appear to have been downloaded previously."
+        Write-Log -Level ERROR -Message "Setup file not found!"
+        Write-Log -Level ERROR -Message "SkipDownload was set, but the installer does not appear to have been downloaded previously."
         exit 1
     }
 
@@ -207,10 +205,5 @@ else {
 $ArgumentList = "/Eula Accept /Auto Upgrade /Quiet /MigrateDrivers all /DynamicUpdate Disable /Telemetry disable /Compat IgnoreWarning /ShowOOBE none /CopyLogs C:\!TECH\Windows11Setup\Logs"
 
 # Start the upgrade Process
-Write-Host "Starting upgrade!"
+Write-Log "Starting upgrade!"
 Start-Process -Wait -FilePath "C:\!TECH\Windows11Setup\setup.exe" -ArgumentList $ArgumentList
-
-# END LOGGING
-if ($LogOutput -eq "true") {
-    Stop-Transcript
-}
