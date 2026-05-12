@@ -24,7 +24,7 @@ Import-Module $env:SyncroModule
 $scriptUrl = "https://raw.githubusercontent.com/SunshineSam/Scripts/main/NinjaRMM/Windows/SecureBoot%20Management/SecureBoot-Management-CA2023.ps1"
 $localPath = "$env:TEMP\SecureBoot-Management-CA2023.ps1"
 $textFile = "C:\Logs\SecureBoot\SecureBootStatus.txt" # Source script always writes to this path
-$expectedScriptHash = "7705575263B6F5E2FEE56E12D6A29C82901B5A7611F5E8DB7D2623AEEC018F1D"
+$expectedScriptHash = "ECD4E0347D8AD7B10115EB6BE32F643BEDFD09425DC61F8035369E4E2C011E49"
 
 # Download source script as UTF-8 explicitly to avoid encoding issues.
 $scriptContent = Invoke-RestMethod -Uri $scriptUrl
