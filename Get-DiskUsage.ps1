@@ -13,7 +13,6 @@
             Description: Directory path to scan for disk usage. If not path is provided, script will use C:\.
                          You can set this to scan a certain directory, or another drive such as D:\ or E:\.
         
-    
 #>
 
 if ($null -ne $env:SyncroModule) { 
