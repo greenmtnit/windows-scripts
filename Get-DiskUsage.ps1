@@ -166,6 +166,7 @@ if (-not (Get-Item "C:\Windows\System32\diskusage.exe" -ErrorAction SilentlyCont
     exit 1
 }
 
+$hostname = $env:COMPUTERNAME
 $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
 
 # ── Run diskusage and save source CSVs to %TEMP% ─────────────────────────────
@@ -187,11 +188,12 @@ Write-Host "  Saved: $InputFiles"
 if (-not (Test-Path $OutputReportsDir)) { New-Item -ItemType Directory -Path $OutputReportsDir | Out-Null }
 
 # ── Generate output file names ──────────────────────────────────────────
-$OutputDirsCSV  = Join-Path $OutputReportsDir "DiskUsageDirs_${timestamp}.csv"
-$OutputFilesCSV = Join-Path $OutputReportsDir "DiskUsageFiles_${timestamp}.csv"
-$OutputTxtFile  = Join-Path $OutputReportsDir "DiskUsageSummary_${timestamp}.txt"
+$OutputDirsCSV  = Join-Path $OutputReportsDir "DiskUsageDirs_${hostname}_${timestamp}.csv"
+$OutputFilesCSV = Join-Path $OutputReportsDir "DiskUsageFiles_${hostname}_${timestamp}.csv"
+$OutputTxtFile  = Join-Path $OutputReportsDir "DiskUsageSummary_${hostname}_${timestamp}.txt"
 
 # Initialize text file
+Add-Content -Path $OutputTxtFile "Disk Usage Report for $hostname`n"
 Add-Content -Path $OutputTxtFile "Generated at: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')`n"
 
 # ── Use functions to process the reports
