@@ -104,7 +104,7 @@ if ($osInfo.ProductType -ne 1) {
     exit
 }
 
-if (-not $CustomerRemoveLocalAdmins) {
+if ((-not $CustomerRemoveLocalAdmins) -and (-not $DryRun)) {
     Write-Host "Remove Local Admins is not set for this client. Exiting."
     exit
 }
@@ -130,13 +130,28 @@ $LocalAdmins = Get-LocalAdminsNet | Where-Object {
 $LocalAdmins | Format-Table
 
 ForEach ($LocalAdmin in $LocalAdmins) {
-    $name = $LocalAdmin.Name
+    
+    if ($LocalAdmin.Domain -eq $env:COMPUTERNAME) { # Use $Name for local accounts
+        $name = $LocalAdmin.Name
+    }
+    else {  # Use $FullName for Entra or Domain accounts, e.g. AzureAD\jdoe, DOMAIN\jdoe
+        $name = $LocalAdmin.FullName
+    }
+    
     Write-Host "Removing $name from local administrators group"
+
     if ($DryRun) {
         Remove-LocalGroupMember -Group "Administrators" -Member $name -WhatIf
     }
     else {
-        Remove-LocalGroupMember -Group "Administrators" -Member $name
+        try {
+            Remove-LocalGroupMember -Group "Administrators" -Member $name -ErrorAction Stop
+        }
+        catch {
+            Write-Host "Remove-LocalGroupMember failed for $name, falling back to net command..."
+            # Use ADSI as a fallback method. This is needed for Entra users (AzureAD), and possibly other cases.
+            net localgroup administrators /del $name
+        }
     }
 }
 
@@ -149,4 +164,3 @@ $LocalAdmins = Get-LocalAdminsNet | Where-Object {
     $_.Name -notlike "*greenmtnit.com"
 }
 $LocalAdmins | Format-Table
-
