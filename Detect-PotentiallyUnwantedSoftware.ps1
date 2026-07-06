@@ -90,7 +90,6 @@ $ApplicationList = @(
     "Advanced Monitoring Agent*"
     "Adobe Flash Player*"
     "Adobe Shockwave Player*"
-    "Aero*"
     "AeroAdmin*"
     "ahnlab*"
     "alpemix*"
