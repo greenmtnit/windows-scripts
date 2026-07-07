@@ -1,7 +1,7 @@
 <#
     Check-BSODs.ps1
   
-    Monitors Windows systems for new blue screen of death (BSOD) crahses. When a new crash occurs, it uploads the latest dump file, analyzes it using BlueScreenView, and automatically creates a SyncroRMM ticket with detailed notes.
+    Monitors Windows systems for new blue screen of death (BSOD) crashes. When a new crash occurs, it uploads the latest dump file, analyzes it using BlueScreenView, and automatically creates a SyncroRMM ticket with detailed notes.
 
     The script uses a marker file to keep track of the last run to avoid processing old dumps.
 
@@ -69,7 +69,6 @@ $ticketNotes = "Remember to follow process: https://app.process.st/workflows/How
 $latestDump = $files | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 
 ###########################################################
-# Perform an action on each file
 Write-Output "Uploading lastest dump file to Syncro asset: $($latestDump.FullName)"
 Upload-File -FilePath $($latestDump.FullName)
 
@@ -120,10 +119,26 @@ $sixtyDaysAgo = (Get-Date).AddDays(-60)
 $recentDumps = Get-ChildItem "C:\Windows\Minidump" -Filter "*.dmp" -ErrorAction SilentlyContinue |
     Where-Object { $_.LastWriteTime -gt $sixtyDaysAgo }
 
+# Check if this is an isolated BSOD (only one in the past 60 days)
 if ($recentDumps.Count -le 1) {
-    $ticketNotes += "`nFrequency:`nThis IS the only BSOD in the last 60 days.`nNotify client per our process and close ticket.`n"
-} else {
-    $ticketNotes += "`nFrequency:`nThis is NOT the only BSOD in the last 60 days.`nFurther investigation is needed.`n"
+    $isolatedBSOD = $true 
+}
+
+# Check if this is a server
+$osInfo = Get-CimInstance -ClassName Win32_OperatingSystem
+if ($osInfo.ProductType -ne 1) {
+  $isServer = $true
+}
+
+if ($isolatedBSOD -and (-not $isServer)) {
+    $ticketNotes += "`nFrequency:`nThis is an isolated BSOD (only occurence in the last 60 days).`nTicket will be closed automatically.`n"
+    $autoCloseTicket = $true
+}
+elseif ($isolatedBSOD -and $isServer) {
+    $ticketNotes += "`nFrequency:`nThis is an isolated BSOD (only occurence in the last 60 days).`nHowever, since this is a server, you should investigate thoroughly.`n"
+}    
+else {
+    $ticketNotes += "`nFrequency:`nThis is NOT the only recent BSOD (last 60 days).`n"
 
     # List up to 10 previous BSODs
     $previous = $recentDumps |
@@ -139,7 +154,6 @@ if ($recentDumps.Count -le 1) {
 
 # If the var $AssetBirthDate is set (this will be set elsewhere), use it to determine age of the computer asset.
 if ($AssetBirthDate) {
-
     # Strip "(Estimated)" if present
     $cleanBirthDate = $AssetBirthDate -replace "\s*\(Estimated\)", ""
 
@@ -173,5 +187,10 @@ foreach ($disk in $physicalDisks) {
 $ticketNotes += "`nAsset`nModel: $manufacturer $model`nSerial: $serialNumber`nAge: $([math]::Round($ageYears,2)) years`n"
 $ticketNotes += "`nHardware`nCPU: $($cpu.Name)`nMemory: $memoryGB GB`nDisks: $diskSummary"
 
-# Finally, add ticket notes to the ticket
+# Add ticket notes to the ticket
 Create-Syncro-Ticket-Comment -TicketIdOrNumber $ticketID -Subject "Diagnosis" -Body $ticketNotes -Hidden "false" -DoNotEmail "true"
+
+# If $autoCloseTicket is set, close the ticket
+if ($autoCloseTicket) { 
+    Update-Syncro-Ticket -TicketIdOrNumber $ticketID -Status "Resolved"
+}
