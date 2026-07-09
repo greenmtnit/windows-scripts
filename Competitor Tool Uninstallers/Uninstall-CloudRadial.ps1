@@ -47,7 +47,9 @@ function Invoke-Uninstall {
 
 $Targets = @(
     @{ Name = "CloudRadial Agent";          Path = "C:\Program Files (x86)\CloudRadial Agent\unins000.exe" }
-    @{ Name = "simpleroute Support Portal"; Path = "C:\Program Files (x86)\simpleroute Support Portal\unins001.exe" }
+    @{ Name = "simpleroute Support Portal 1"; Path = "C:\Program Files (x86)\simpleroute Support Portal\unins000.exe" }
+    @{ Name = "simpleroute Support Portal 2"; Path = "C:\Program Files (x86)\simpleroute Support Portal\unins001.exe" }
+
 )
 
 $exitCodes = foreach ($target in $Targets) {

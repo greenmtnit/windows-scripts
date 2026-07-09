@@ -20,6 +20,12 @@ Get-VMSwitch | Select-Object Name, SoftwareRscEnabled, RscOffloadEnabled
 Write-Host "Disabling RSC on all virtual switches"
 Get-VMSwitch | Set-VMSwitch -EnableSoftwareRsc:$false
 
+Write-Host "Checking current status of RSC on adapters"
+Get-NetAdapterRsc
+
+Write-Host "Disabling RSC on all adapters"
+Get-NetAdapterRsc | ForEach-Object {Disable-NetAdapterRsc -Name $_.Name}
+
 # Prepare folders
 $baseFolder = "C:\Program Files\Green Mountain IT Solutions"
 $scriptsFolder = "$baseFolder\Scripts"
@@ -35,7 +41,7 @@ if (-not (Test-Path $scriptsFolder)) {
 
 # Create DisableRsc.ps1 script content
 $disableRscContent = @'
-if (! (Get-Command "Get-VMSwitch" -ErrorAction SilentlyContinue)) {
+if (!(Get-Command "Get-VMSwitch" -ErrorAction SilentlyContinue)) {
   Write-Host "VMSwitch cmdlets not found. Is this a Hyper-V host? EXITING"
   exit 0
 }
@@ -45,6 +51,12 @@ Get-VMSwitch | Select-Object Name, SoftwareRscEnabled, RscOffloadEnabled
 
 Write-Host "Disabling RSC on all virtual switches"
 Get-VMSwitch | Set-VMSwitch -EnableSoftwareRsc:$false
+
+Write-Host "Checking current status of RSC on adapters"
+Get-NetAdapterRsc
+
+Write-Host "Disabling RSC on all adapters"
+Get-NetAdapterRsc | ForEach-Object {Disable-NetAdapterRsc -Name $_.Name}
 '@
 
 Set-Content -Path $disableRscScript -Value $disableRscContent -Encoding UTF8
