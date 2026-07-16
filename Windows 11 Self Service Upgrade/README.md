@@ -20,9 +20,9 @@ Be warned that some alerts, file paths, etc. may use our company name. You'll wa
 ### Deploy Windows 11 Compatibility Check Script
 Deploy the [Windows 11 Compatibility Check Script](https://github.com/greenmtnit/windows-scripts/blob/main/Check-Windows11Support.ps1) via Syncro. Recommended: add the script as a Setup Script in Syncro policies so it will run on every machine added to Syncro.
 
-You need to create a Syncro custom asset field (text field) called `SupportWindows11`
+You need to create a Syncro custom asset field (text field) called `SupportsWindows11`
 
-This script is based on Microsoft's official hardware readiness script. If the machine supports Windows 11, the script writes a value of "Yes" to the `SupportWindows11` custom field. If the machine does **not** support Windows 11, the script write a value of "No" to the `SupportWindows11` custom field, plus a reason why Windows 11 is not supported. Example: `No, Processor, TPM`.
+This script is based on Microsoft's official hardware readiness script. If the machine supports Windows 11, the script writes a value of "Yes" to the `SupportsWindows11` custom field. If the machine does **not** support Windows 11, the script write a value of "No" to the `SupportWindows11` custom field, plus a reason why Windows 11 is not supported. Example: `No, Processor, TPM`.
 
 
 ### Create AutoElevate Rule for the Update Assistant

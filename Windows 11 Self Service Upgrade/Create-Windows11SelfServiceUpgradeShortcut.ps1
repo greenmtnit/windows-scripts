@@ -14,7 +14,7 @@ This PowerShell script performs the following tasks:
 
 Import-Module $env:SyncroModule
 
-# CHANGE THESE
+# CHANGE THESE AS NEEDED
 $shortcutPath = "C:\Users\Public\Desktop\Windows 11 Self Service Upgrade.lnk"
 $batchFilePath = "C:\Program Files\Green Mountain IT Solutions\Scripts\Windows11SelfServiceUpgrade.bat"
 $scriptURL = "https://raw.githubusercontent.com/greenmtnit/windows-scripts/refs/heads/main/Windows%2011%20Self%20Service%20Upgrade/Windows11SelfServiceUpgrade.bat"

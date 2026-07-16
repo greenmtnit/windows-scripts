@@ -61,9 +61,9 @@ ECHO =============================================
 ECHO      WINDOWS 11 SELF-SERVICE UPGRADE
 ECHO =============================================
 ECHO.
-ECHO Your system will be upgraded to Windows 11. Please read the following before continuing:
+ECHO Your system will be upgraded to Windows 11. If already on 11, it will be upgraded to the latest version. Please read the following before continuing:
 ECHO.
-ECHO 1) This process can take several hours. Your computer must stay on the entire time. If this is a laptop, keep it plugged in. Don't close the lid. It's recommended to run the upgrade overnight, or when you aren't using the computer.
+ECHO 1) This process typically takes 1-2 hours. Your computer must stay on the entire time. If this is a laptop, keep it plugged in. Don't close the lid. It's recommended to run the upgrade overnight, or when you aren't using the computer.
 ECHO.
 ECHO 2) The upgrade keeps all your files, applications, and settings, but there is always a small chance some unique setups may have issues. By proceeding, you confirm you understand the risks.
 ECHO.

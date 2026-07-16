@@ -1,16 +1,16 @@
 <#
 
-Create-24H2SelfServiceUpgradeShortcut.ps1
+Create-25H2SelfServiceUpgradeShortcut.ps1
 
-Deploys a desktop shortcut to allow users to perform a self-service upgrade to Windows 11 version 24H2.
+Deploys a desktop shortcut to allow users to perform a self-service upgrade to Windows 11 version 25H2.
 
 Currently, will only be deployed on laptops.
 
 This PowerShell script performs the following tasks:
 - Check if the system is a laptop and if not, exits.
-- Checks if the system is already on Windows 11 version 24H2
+- Checks if the system is already on Windows 11 version 25H2
 - Creates necessary folder structure under "C:\Program Files\Green Mountain IT Solutions".
-- Downloads a batch script ("Windows24H2SelfServiceUpgrade.bat") that upgrades a computer to Windows 11 Version 24H2. See Github link for that script.
+- Downloads a batch script ("Windows25H2SelfServiceUpgrade.bat") that upgrades a computer to Windows 11 Version 25H2. See Github link for that script.
 - Downloads a custom icon file for the shortcut from a publicly accessible URL.
 - Creates a shortcut on the public desktop that points to the batch script, using the downloaded icon.
 
@@ -26,8 +26,8 @@ function Check-Laptop {
 
 # VARIABLES - CHANGE THESE
 $shortcutPath = "C:\Users\Public\Desktop\Self Service Upgrade.lnk"
-$scriptURL = "https://raw.githubusercontent.com/greenmtnit/windows-scripts/refs/heads/main/Windows%2011%2024H2%20Self%20Service%20Upgrade/Windows24H2SelfServiceUpgrade.bat"
-$batchScriptPath = "C:\Program Files\Green Mountain IT Solutions\Scripts\Windows24H2SelfServiceUpgrade.bat"
+TODO $scriptURL = "https://raw.githubusercontent.com/greenmtnit/windows-scripts/refs/heads/main/Windows%2011%2024H2%20Self%20Service%20Upgrade/Windows24H2SelfServiceUpgrade.bat"
+$batchScriptPath = "C:\Program Files\Green Mountain IT Solutions\Scripts\Windows25H2SelfServiceUpgrade.bat"
 $iconURL = "https://s3.us-east-1.wasabisys.com/gmits-public/Windows11Upgrade.ico"
 $iconPath = "C:\Program Files\Green Mountain IT Solutions\Scripts\WindowsUpgrade.ico"
 
@@ -37,7 +37,7 @@ if (-not (Check-Laptop)) {
     exit 0
 }
 
-# Check if already on 24H2
+# Check if already on 25H2
 $CurrentVersion = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion"
 if ($CurrentVersion.DisplayVersion) {
     $DisplayVersion = $CurrentVersion.DisplayVersion
@@ -48,8 +48,8 @@ if ($CurrentVersion.DisplayVersion) {
 
 $Build = $CurrentVersion.CurrentBuildNumber
 
-if ($Build -ge 26100) { # 26100 is 24H2
-    Write-Host "This machine is already on Windows 11 version 24H2. Exiting!"
+if ($Build -ge 26200) { # 26200 is 25H2
+    Write-Host "This machine is already on Windows 11 version 25H2 (26200). Exiting!"
     exit 0
 }
 
@@ -73,7 +73,7 @@ $ProgressPreference = "SilentlyContinue"
 Remove-Item $batchScriptPath -ErrorAction SilentlyContinue # Delete if already exist
 
 Try {
-    Write-Host "Downloading Windows24H2SelfServiceUpgrade.bat..."
+    Write-Host "Downloading Windows25H2SelfServiceUpgrade.bat..."
     Invoke-WebRequest -Uri $scriptURL -OutFile $batchScriptPath -ErrorAction Stop
 } Catch {
     Write-Host "ERROR: Failed to download the file."

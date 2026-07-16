@@ -1,12 +1,12 @@
 @ECHO OFF
-TITLE Windows 11 Version 24H2 Upgrade
+TITLE Windows 11 Version 25H2 Upgrade
 
 REM ####################################
-REM Windows24H2SelfServiceUpgrade.bat
+REM Windows25H2SelfServiceUpgrade.bat
 REM
-REM Batch script to allow user to upgrade their machine to Windows 11 version 24H2.
-REM Meant to be used in conjunction with Create-Windows24H2SelfServiceUpgradeShortcut.ps1
-REM https://github.com/greenmtnit/windows-scripts/blob/main/Create-Windows24H2SelfServiceUpgradeShortcut.ps1
+REM Batch script to allow user to upgrade their machine to Windows 11 version 25H2.
+REM Meant to be used in conjunction with Create-Windows25H2SelfServiceUpgradeShortcut.ps1
+REM https://github.com/greenmtnit/windows-scripts/blob/main/Create-Windows25H2SelfServiceUpgradeShortcut.ps1
 REM 
 REM Script overview:
 REM First, perform some simple checks:
@@ -23,8 +23,8 @@ FOR /F "tokens=3*" %%A IN ('REG QUERY "HKLM\SOFTWARE\Microsoft\Windows NT\Curren
 REM Get Build number
 FOR /F "tokens=3*" %%A IN ('REG QUERY "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion" /v CurrentBuild 2^>NUL') DO SET "Build=%%A"
 
-IF %Build% GEQ 26100 (
-    ECHO This computer is already on Windows 11 version 24H2. No need to upgrade!
+IF %Build% GEQ 26200 (
+    ECHO This computer is already on Windows 11 version 25H2. No need to upgrade!
     PAUSE
     EXIT
 ) ELSE (
@@ -51,10 +51,10 @@ REM ===== PROMPT USER TO CONFIRM =====
 REM Confirmation Prompt 1
 ECHO.
 ECHO =============================================
-ECHO      Windows 11 Version 24H2 Upgrade
+ECHO      Windows 11 Version 25H2 Upgrade
 ECHO =============================================
 ECHO.
-ECHO   Your system will be upgraded to Windows 11 version 24H2. Please read the following before continuing:  
+ECHO   Your system will be upgraded to Windows 11 version 25H2. Please read the following before continuing:  
 ECHO.
 ECHO   1) This process can take a while. Your computer must stay on the entire time. You can continue to use the computer. If this is a laptop, keep it plugged in. Don't close the lid.  
 ECHO.
@@ -69,7 +69,7 @@ IF ERRORLEVEL 2 (
     EXIT
 )
 IF ERRORLEVEL 1 (
-    ECHO OK! Proceeding with 24H2 upgrade...
+    ECHO OK! Proceeding with 25H2 upgrade...
 )
 
 TIMEOUT /T 3 >NUL
