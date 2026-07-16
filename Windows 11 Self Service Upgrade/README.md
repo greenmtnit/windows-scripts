@@ -1,12 +1,15 @@
+
 # Windows 11 Self Service Upgrade
 ## Overview
-The self-service upgrade process consists of a desktop shortcut to a batch script to run the Windows 11 Upgrade Assistant.
+The self-service upgrade process consists of a desktop shortcut to a batch script to run the Windows 11 Installation Assistant.
 
 ## Enviroment Prerequisites
 This system is designed for a managed IT environment where the following are available:
 
 - **SyncroMSP RMM**: For running scripts. Syncro's asset custom field feature is also used to track Windows 11 compatibility.
-- **AutoElevate**: Allows users to run the Windows 11 Update Assistant without local administrator rights.
+- An **elevation tool (Privileged Access Management / PAM tool)** to allow user to run the Windows 11 Update Assistant without local administrator rights. This project supports one of either:
+	- **Evo Security**, or
+	- **AutoElevate**
 
 You may be able to adapt for other RMM and elevation tools.
 
@@ -24,8 +27,32 @@ You need to create a Syncro custom asset field (text field) called `SupportsWind
 
 This script is based on Microsoft's official hardware readiness script. If the machine supports Windows 11, the script writes a value of "Yes" to the `SupportsWindows11` custom field. If the machine does **not** support Windows 11, the script write a value of "No" to the `SupportWindows11` custom field, plus a reason why Windows 11 is not supported. Example: `No, Processor, TPM`.
 
+### Evo Security Configuration
+Create an end user elevation rule in Evo Security to allow the Windows 11 Update Assistant to run. This way, users can run the self-service upgrade without local administrator privileges.
 
-### Create AutoElevate Rule for the Update Assistant
+#### Recommendations for Evo
+- Download the [Windows 11 Installation Assistant](https://go.microsoft.com/fwlink/?linkid=2171764)
+- Create a global elevation rule in Evo
+- Upload the Windows 11  Installation Assistant .exe file onto the Evo rule creation page
+- Restrict the path in the rule to the path where the self-service script will save the Update Assistant, i.e. `C:\temp\Windows11InstallationAssistant.exe`. While not perfect, this prevents users from running the Update Assistant independently, e.g. from their Downloads folder.
+
+#### Example Evo Rule
+
+##### Identification Criteria:
+- File path: `C:\temp\Windows11InstallationAssistant.exe`
+- Certificate Thumbprint: Use the thumbprint that is generated automatically when you upload the .exe
+- All other File criteria un-checked
+
+#####  General section:
+- Resolution Action: Approve
+- Name: `GLOBAL - APP - Windows 11 Installation Assistant`
+- Description: `Allow self-service Windows 11 upgrades`
+- Rule Expiration: `none`
+- Execution Mode: `Admin`
+- Bypass UAC: `false`
+- Apply Rule Globally: `True`
+
+### AutoElevate Configuration
 Create a rule in AutoElevate to allow the Windows 11 Update Assistant to run. This way, users can run the self-service upgrade without local administrator privileges.
 
 #### Recommendations for AutoElevate

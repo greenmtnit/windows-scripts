@@ -26,15 +26,20 @@ function Check-Laptop {
 
 # VARIABLES - CHANGE THESE
 $shortcutPath = "C:\Users\Public\Desktop\Self Service Upgrade.lnk"
-TODO $scriptURL = "https://raw.githubusercontent.com/greenmtnit/windows-scripts/refs/heads/main/Windows%2011%2024H2%20Self%20Service%20Upgrade/Windows24H2SelfServiceUpgrade.bat"
+$scriptURL = "https://raw.githubusercontent.com/greenmtnit/windows-scripts/refs/heads/main/Windows%2011%2025H2%20Self%20Service%20Upgrade/Windows25H2SelfServiceUpgrade.bat"
 $batchScriptPath = "C:\Program Files\Green Mountain IT Solutions\Scripts\Windows25H2SelfServiceUpgrade.bat"
 $iconURL = "https://s3.us-east-1.wasabisys.com/gmits-public/Windows11Upgrade.ico"
 $iconPath = "C:\Program Files\Green Mountain IT Solutions\Scripts\WindowsUpgrade.ico"
 
 # MAIN SCRIPT ACTION
-if (-not (Check-Laptop)) {
-    Write-Host "This system is NOT a laptop. The script will only execute on laptops. Exiting."
-    exit 0
+if ($SkipLaptopCheck -eq "true") {
+    Write-Host "Requested to skip laptop check."
+}
+else {
+    if (-not (Check-Laptop)) {
+        Write-Host "This system is NOT a laptop. The script will only execute on laptops. Use SkipLaptopCheck to override. Exiting."
+        exit 0
+    }
 }
 
 # Check if already on 25H2

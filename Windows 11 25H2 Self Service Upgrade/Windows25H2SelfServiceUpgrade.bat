@@ -129,7 +129,7 @@ IF NOT EXIST "%FILE%" (
 REM ===== Prompt User =====
 CLS
 ECHO .
-ECHO NOTICE: Click Accept and Install when it appears.
+ECHO NOTICE: Click Yes if prompted for admin privileges. Then, click Accept and Install when it appears.
 ECHO If the upgrade window does not appear, check for and click the icon on the taskbar.
 TIMEOUT /T 10 >NUL
 
