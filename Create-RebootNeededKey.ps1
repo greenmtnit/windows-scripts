@@ -16,10 +16,11 @@ function Create-RebootNeededKey {
 
     
         EXAMPLE of how to check the value in a script
-            if ((Get-ItemProperty -Path 'HKLM:\SOFTWARE\Green Mountain IT Solutions\RMM\RebootNeeded' -Name 'RebootNeeded' -ErrorAction SilentlyContinue).RebootNeeded -eq 1) {
-                    Write-Output "The registry value 'RebootNeeded' is set to 1."
+            $RebootNeededPath = "HKLM:\SOFTWARE\Green Mountain IT Solutions\RMM\RebootNeeded"
+            if ((Get-ItemProperty -Path $RebootNeededPath -Name "RebootNeeded" -ErrorAction SilentlyContinue).RebootNeeded -eq 1) {
+                    Write-Output "The registry value RebootNeeded is set to 1."
             } else {
-                Write-Output "The registry value 'RebootNeeded' is not set to 1 or does not exist."
+                Write-Output "The registry value RebootNeeded is not set to 1 or does not exist."
             }
     
     #>
