@@ -15,6 +15,8 @@ if ($null -ne $env:SyncroModule) { Import-Module $env:SyncroModule -DisableNameC
    - Create a organization (customer) custom field (checkbox) called "UseBitlockerEncryption" and check the box for clients who use BitLocker. Add to script as:
    - $UseBitlockerEncryption - Type = platform - {{customer_custom_field_usebitlockerencryption}}
    - $DisableSkippingServers - Type = dropdown - "true" or "false" (default false). Turn off the check that skips servers.
+   - $Force - Type = dropdown - "true" or "false" (default false). Force enabling Bitlocker for clients who do not have $UseBitlockerEncryption set.
+
   TODO
    - By default, enable Bitlocker on non-VM server OS
   
@@ -103,6 +105,8 @@ $alertCategory = "BitLocker"
 # Convert Syncro's string variables to boolean
 $UseBitlockerEncryption = ConvertTo-Boolean $UseBitlockerEncryption
 $DisableSkippingServers = ConvertTo-Boolean $DisableSkippingServers
+$Force = ConvertTo-Boolean $Force
+
 
 # PRECONDITION CHECKS
 # Check if device is a server
