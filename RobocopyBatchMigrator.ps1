@@ -9,6 +9,9 @@
     - Displays and executes each Robocopy command in sequence.
 
     Usage:
+    - Edit the $options array as desired to set robocopy options. 
+        - See: https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/robocopy
+    - Edit the $commands array with the desired migration jobs to run.
     - Run as-is for a dry run (no changes made).
     - Use -DryRun:$false to perform an actual migration.
     - Use -Force to skip confirmation prompt (use with caution).
@@ -57,7 +60,7 @@ if (-not $Force) {
 # Robocopy options. Add or edit as you like
 $options = @(
     "/E",                       # Copy subdirectories, including empty ones
-    "/B",                       # Copy files in backup mode (uses BackupSemantics)
+    "/B",                       # Copy files in backup mode. Allows access to files on the source that may otherwise be restricted by NTFS permissions, so the copy can still proceed.
     "/COPY:DAT",                # Copy data, attributes, timestamps - NOTE: Excludes permissions
     "/PURGE",                   # DELETE destination files/folders that no longer exist in the source
     "/R:5",                     # Number of retries on failed copies
@@ -65,8 +68,8 @@ $options = @(
     "/MT:64",                   # Use multithreaded copies (value can be adjusted based on system resources)
     "/TEE",                     # Display output in the console window and log file
     "/LOG+:$logPath",           # Append log output to a file
-    "/XD", "APPDATA", "TEST*",  # Example directory exclusions
-	"/XF", "*.tmp", "*.pdf"     # Example file exclusions
+    "/XD", "APPDATA", "TEST*",  # EDIT THIS - Example directory exclusions
+	"/XF", "*.tmp", "*.pdf"     # EDIT THIS - Example file exclusions
     #"/V"                       # Produce verbose output
         # Next two options: together, /NFL and /NDL are the opposite of verbose - just print a summary.
     # "/NFL",                   # No File List - do not log file names
