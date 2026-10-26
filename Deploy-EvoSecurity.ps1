@@ -17,7 +17,9 @@
         Downloads official Evo deployment script: https://raw.githubusercontent.com/evosecurity/EvoWindowsAgentDeploymentScripts/refs/heads/master/InstallEvoAgent.ps1
         If Evo is already installed, runs the official install script with -Upgrade flag.
         If Evo is not installed, runs official install script normally.
-        Throws a Syncro RMM alert if install fails.
+        Throws a Syncro RMM alert if a NEW install (or removal) fails.
+        Upgrade failures do NOT raise an RMM alert; they are written to the script output and the script exits 1,
+            so they still show as failed in Syncro script history.
         Clears open Evo Deployment RMM alerts (if any) if install succeeds.
         Applies custom branding (https://helpdesk.evosecurity.com/product-information/5t3848WNzTVsSU4KkXazrX/end-user-elevation-custom-branding/69qPZzsDFUEA5aJtyDrbkf)
     
@@ -27,6 +29,18 @@
 #>
 
 Import-Module $env:SyncroModule
+
+# Raises an RMM alert for new installs/removals only. Upgrade failures are logged but not alerted.
+function Send-EvoAlert {
+    param([string]$Message)
+    if ($script:upgradeMode) {
+        Write-Warning "Evo upgrade failed (RMM alert suppressed for upgrades): $Message"
+    }
+    else {
+        Write-Warning "Evo deployment failed: $Message"
+        Rmm-Alert -Category "Evo Deployment" -Body "Evo deployment failed: $Message"
+    }
+}
 
 # Check for AutoElevate, to avoid conflicts
 if ($Remove -ne "true") {
@@ -114,7 +128,7 @@ if ($osInfo.ProductType -ne 1) {
         # Check for deployment token
         $msg = "Error! Evo server deployment token not found!"
         Write-Host $msg
-        Rmm-Alert -Category "Evo Deployment" -Body "Evo deployment failed: $msg"
+        Send-EvoAlert -Message $msg
         exit 1
     }
     else {
@@ -127,7 +141,7 @@ else { # Not a server. Use regular token.
         # Check for deployment token
         $msg = "Error! Evo deployment token not found!"
         Write-Host $msg
-        Rmm-Alert -Category "Evo Deployment" -Body "Evo deployment failed: $msg"
+        Send-EvoAlert -Message $msg
         exit 1
     }
     else {
@@ -148,6 +162,8 @@ catch {
     Write-Warning "Failed to download Evo installer script: $($_.Exception.Message)"
     exit 1
 }
+
+$installFailed = $false
 
 try {
     Write-Host "Running Evo installer script..."
@@ -193,7 +209,8 @@ catch {
     else {
         Write-Warning "Evo installer encountered an error:"
         Write-Warning $msg
-        Rmm-Alert -Category "Evo Deployment" -Body "Evo deployment failed: $msg"
+        Send-EvoAlert -Message $msg
+        $installFailed = $true
     }
 }
 
@@ -235,3 +252,7 @@ if (($installSucceeded -or ($ForceBranding -eq "true")) -and ($Remove -ne "true"
 
 }
 
+# Mark the Syncro script run as failed so silent upgrade failures are still visible in script history
+if ($installFailed) {
+    exit 1
+}
