@@ -8,6 +8,8 @@
         $EvoServerToken - Platform Variable. Set to Customer Custom Field "Evo Server Deployment Token". Paste the client's SERVER deployment token in this field in Syncro.
         $ForceBranding - Dropdown. String values "true" or "false". Default: "false". If true, custom branding will be applied in every case, regardless of if Evo is already installed.
         $Remove - Dropdown. String values "true" or "false". Default: "false". If true, remove the Evo agent.
+        $Reinstall - Dropdown. String values "true" or "false". Default: "false". If true, remove the Evo agent, wait 10 seconds, then install it fresh.
+            If Evo is not currently installed, a normal install is run. If $Remove is also "true", $Remove takes precedence.
         $CustomInstallerURL - Runtime. Enter a URL of a custom Evo agent download. This can be used to install older versions of the agent.
             Download URLs are in this format: https://download.evosecurity.com/release/credpro/credential-provider-v2.5.2.0_x64.zip.
             To download another version, change the version number in the URL.
@@ -15,9 +17,10 @@
     Summary:
         Checks if Evo is already installed.
         Downloads official Evo deployment script: https://raw.githubusercontent.com/evosecurity/EvoWindowsAgentDeploymentScripts/refs/heads/master/InstallEvoAgent.ps1
-        If Evo is already installed, runs the official install script with -Upgrade flag.
+        If Reinstall is set, removes Evo, waits 10 seconds, verifies removal, then runs a fresh install.
+        If Evo is already installed (and Reinstall is not set), runs the official install script with -Upgrade flag.
         If Evo is not installed, runs official install script normally.
-        Throws a Syncro RMM alert if a NEW install (or removal) fails.
+        Throws a Syncro RMM alert if a NEW install, reinstall, or removal fails.
         Upgrade failures do NOT raise an RMM alert; they are written to the script output and the script exits 1,
             so they still show as failed in Syncro script history.
         Clears open Evo Deployment RMM alerts (if any) if install succeeds.
@@ -30,7 +33,7 @@
 
 Import-Module $env:SyncroModule
 
-# Raises an RMM alert for new installs/removals only. Upgrade failures are logged but not alerted.
+# Raises an RMM alert for new installs/reinstalls/removals only. Upgrade failures are logged but not alerted.
 function Send-EvoAlert {
     param([string]$Message)
     if ($script:upgradeMode) {
@@ -42,6 +45,13 @@ function Send-EvoAlert {
     }
 }
 
+# Returns uninstall registry entries for Evo, if present
+function Get-EvoInstall {
+    Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* `
+        -ErrorAction SilentlyContinue |
+        Where-Object { $_.DisplayName -in @("Evo Agent","Evo Secure Login") }
+}
+
 # Check for AutoElevate, to avoid conflicts
 if ($Remove -ne "true") {
     if (Get-Service -Name "AutoElevateAgent" -ErrorAction SilentlyContinue) { 
@@ -51,19 +61,30 @@ if ($Remove -ne "true") {
 }
 
 # Detect existing installation
-$installed = Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* `
-    -ErrorAction SilentlyContinue |
-    Where-Object { $_.DisplayName -in @("Evo Agent","Evo Secure Login") }
+$installed = Get-EvoInstall
 $evoVersion = ($installed | Select -First 1).DisplayVersion
 
 $upgradeMode = $false
+$reinstallMode = $false
 
 if ($Remove -eq "true") {
+    if ($Reinstall -eq "true") {
+        Write-Warning "Both Remove and Reinstall are set. Remove takes precedence; Evo will NOT be reinstalled."
+    }
     Write-Host "Remove is set. Removing Evo!"
+}
+elseif ($Reinstall -eq "true") {
+    if ($installed) {
+        $reinstallMode = $true
+        Write-Host "Reinstall is set. Existing Evo installation detected. Version: $evoVersion. Evo will be removed, then installed fresh."
+    }
+    else {
+        Write-Host "Reinstall is set, but Evo is not currently installed. Running normal install."
+    }
 }
 elseif ($installed) {
     $upgradeMode = $true
-    Write-Host "Existing Evo installation detected. Version: $EvoVersion. Running install script in upgrade mode."
+    Write-Host "Existing Evo installation detected. Version: $evoVersion. Running install script in upgrade mode."
 }
 else {
     Write-Host "Evo not currently installed. Running install."
@@ -111,7 +132,7 @@ if ($CustomInstallerURL) {
     
     # If download is already an MSI, not a ZIP
     elseif ($CustomInstallerFileName -like "*.msi") {
-        $CustomInstallerMSIPath = $CustomInstallerDownloadPath
+        $CustomInstallerMSIPath = $CustomInstallerPath
     }
     
     else {
@@ -171,21 +192,28 @@ try {
         Write-Host "Running: $scriptPath -Remove"
         $output = & $scriptPath -Remove *>&1
     }
-    elseif ($upgradeMode) {
-        $params = @{
-            DeploymentToken = $DeploymentToken
-            Upgrade         = $true
-            Log             = $true
-        }
-        if ($CustomInstall -eq $true) { $params['MSIPath'] = $CustomInstallerMSIPath }
-        Write-Host "Running: $scriptPath $(($params.GetEnumerator() | ForEach-Object { "-$($_.Key) $($_.Value)" }) -join ' ')"
-        $output = & $scriptPath @params *>&1
-    }
     else {
+        # REINSTALL: remove first, wait, and confirm removal before installing
+        if ($reinstallMode) {
+            Write-Host "Reinstall step 1 of 2: removing existing Evo agent."
+            Write-Host "Running: $scriptPath -Remove"
+            $removeOutput = & $scriptPath -Remove *>&1
+            Write-Host ($removeOutput | Out-String)
+
+            Write-Host "Waiting 10 seconds before reinstalling..."
+            Start-Sleep -Seconds 10
+
+            if (Get-EvoInstall) {
+                throw "Reinstall aborted: Evo is still detected after removal. Install was not attempted."
+            }
+            Write-Host "Removal confirmed. Reinstall step 2 of 2: installing Evo agent."
+        }
+
         $params = @{
             DeploymentToken = $DeploymentToken
             Log             = $true
         }
+        if ($upgradeMode) { $params['Upgrade'] = $true }
         if ($CustomInstall -eq $true) { $params['MSIPath'] = $CustomInstallerMSIPath }
         Write-Host "Running: $scriptPath $(($params.GetEnumerator() | ForEach-Object { "-$($_.Key) $($_.Value)" }) -join ' ')"
         $output = & $scriptPath @params *>&1
