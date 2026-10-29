@@ -20,9 +20,9 @@ if ($null -ne $env:SyncroModule) { Import-Module $env:SyncroModule -DisableNameC
 # To get build numbers, see: https://en.wikipedia.org/wiki/Windows_11_version_history
 
 $Windows10MinimumBuild = "19045" # 22H2, EoL October 14, 2025 (see note on ESU)
-$Windows11MinimumBuild = "26100" # 24H2, EoL October 13, 2026
+$Windows11MinimumBuild = "26200" # 25H2, EoL October 12, 2027
 
-$Windows10ESUYear = "1" # Current year for Windows 10 Extended Support updates. See Test-Windows10ESU function.
+$Windows10ESUYear = "2" # Current year for Windows 10 Extended Support updates. See Test-Windows10ESU function.
 
 # Alert Messages
 $AlertCategory = "Windows OS Version"
